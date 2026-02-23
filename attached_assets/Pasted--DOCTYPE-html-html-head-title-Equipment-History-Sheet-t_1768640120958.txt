@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Equipment History Sheet</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f4f4; padding:20px; }
+    h2 { text-align:center; }
+    .box { background:#fff; padding:20px; max-width:900px; margin:auto; border-radius:5px; }
+    label { font-weight:bold; display:block; margin-top:10px; }
+    input { width:100%; padding:8px; margin-top:5px; }
+    table { width:100%; border-collapse:collapse; margin-top:15px; }
+    th, td { border:1px solid #999; padding:8px; text-align:left; }
+    th { background:#eee; }
+    button { margin-top:15px; padding:10px 15px; cursor:pointer; }
+  </style>
+</head>
+<body>
+
+<h2>Equipment History Sheet</h2>
+
+<div class="box">
+  <label>Office Name</label>
+  <input id="officeName">
+
+  <label>Division</label>
+  <input id="division">
+
+  <label>Area / City</label>
+  <input id="area">
+
+  <label>Pincode</label>
+  <input id="pincode">
+
+  <h3>Equipment Details</h3>
+
+  <label>Equipment Name</label>
+  <input id="equipmentName">
+
+  <label>Model Number</label>
+  <input id="modelNumber">
+
+  <label>Serial Number</label>
+  <input id="serialNumber">
+
+  <label>Purchase Date</label>
+  <input type="date" id="purchaseDate">
+
+  <label>Installed At (Office / Branch Name)</label>
+  <input id="installLocation">
+
+  <label>Installation Date</label>
+  <input type="date" id="installationDate">
+
+  <label>Monthly Usage / Refill Frequency</label>
+  <input id="usage">
+
+  <h3>Repair / Maintenance Record</h3>
+
+  <table id="repairTable">
+    <tr>
+      <th>Date</th>
+      <th>Nature of Repair</th>
+      <th>Amount (INR)</th>
+    </tr>
+  </table>
+
+  <button onclick="addRow()">Add Repair Entry</button>
+  <button onclick="generatePDF()">Generate PDF</button>
+</div>
+
+<script>
+  function addRow() {
+    const table = document.getElementById('repairTable');
+    const row = table.insertRow();
+
+    row.insertCell(0).innerHTML = '<input type="date">';
+    row.insertCell(1).innerHTML = '<input type="text" placeholder="Cartridge refill / servicing">';
+    row.insertCell(2).innerHTML = '<input type="number">';
+  }
+
+  function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+
+    let y = 15;
+    pdf.setFontSize(14);
+    pdf.text('Equipment History Sheet', 70, y);
+
+    y += 15;
+    pdf.setFontSize(11);
+    pdf.text('Office Name: ' + officeName.value, 20, y); y+=8;
+    pdf.text('Division: ' + division.value, 20, y); y+=8;
+    pdf.text('Area: ' + area.value, 20, y); y+=8;
+    pdf.text('Pincode: ' + pincode.value, 20, y); y+=12;
+
+    pdf.text('Equipment Name: ' + equipmentName.value, 20, y); y+=8;
+    pdf.text('Model Number: ' + modelNumber.value, 20, y); y+=8;
+    pdf.text('Serial Number: ' + serialNumber.value, 20, y); y+=8;
+    pdf.text('Purchase Date: ' + purchaseDate.value, 20, y); y+=8;
+    pdf.text('Installed At: ' + installLocation.value, 20, y); y+=8;
+    pdf.text('Installation Date: ' + installationDate.value, 20, y); y+=8;
+    pdf.text('Monthly Usage / Refill Frequency: ' + usage.value, 20, y); y+=12;
+
+    pdf.text('Repair and Maintenance History:', 20, y); y+=8;
+
+    const rows = document.querySelectorAll('#repairTable tr');
+    for (let i = 1; i < rows.length; i++) {
+      const cells = rows[i].querySelectorAll('input');
+      pdf.text(cells[0].value + ' | ' + cells[1].value + ' | INR ' + cells[2].value, 20, y);
+      y += 7;
+    }
+
+    y += 10;
+    pdf.text('Remarks:', 20, y); y+=8;
+    pdf.text('The above equipment is maintained regularly and repair details are recorded for official and audit purposes.', 20, y, { maxWidth:170 });
+
+    y += 20;
+    pdf.text('Signature of Incharge', 20, y);
+    pdf.text('Date:', 140, y);
+
+    pdf.save('Equipment_History_Sheet.pdf');
+  }
+</script>
+
+</body>
+</html>
