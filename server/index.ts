@@ -33,12 +33,13 @@ export function log(message: string, source = "express") {
     await setupVite(httpServer, app);
   }
 
-  // FIXED FOR RENDER: Dynamic Port and 0.0.0.0 Host
-  // Render process.env.PORT use karta hai, aur local ke liye 5001 fallback hai.
+  // --- RENDER CLOUD FIX START ---
+  // Port dynamic hona chahiye aur host 0.0.0.0
   const port = Number(process.env.PORT) || 5001;
   const host = "0.0.0.0"; 
 
   httpServer.listen(port, host, () => {
     log(`SERVER RUNNING AT http://${host}:${port}`);
   });
+  // --- RENDER CLOUD FIX END ---
 })();
