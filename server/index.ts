@@ -33,11 +33,12 @@ export function log(message: string, source = "express") {
     await setupVite(httpServer, app);
   }
 
-  // WINDOWS FIX: Port 5001 aur Localhost (127.0.0.1)
-  const port = 5001;
-  const host = "127.0.0.1";
+  // FIXED FOR RENDER: Dynamic Port and 0.0.0.0 Host
+  // Render process.env.PORT use karta hai, aur local ke liye 5001 fallback hai.
+  const port = Number(process.env.PORT) || 5001;
+  const host = "0.0.0.0"; 
 
   httpServer.listen(port, host, () => {
-    log(`OFFLINE SERVER RUNNING AT http://${host}:${port}`);
+    log(`SERVER RUNNING AT http://${host}:${port}`);
   });
 })();
