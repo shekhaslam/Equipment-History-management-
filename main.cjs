@@ -6,7 +6,8 @@ const path = require('path');
 
 // ✅ Configuration
 const TOKEN_PATH = path.join(app.getPath('userData'), 'token.json');
-const DB_PATH = "C:\\Equipment-History\\server\\sqlite.db"; 
+// main.cjs ki line 9 ko aise badlein:
+const DB_PATH = path.join(process.cwd(), 'data', 'sqlite.db');
 
 const CLIENT_ID = '638073198209-a4koue50avr0cfnqn7b3c22soc6r4akt.apps.googleusercontent.com'; 
 const CLIENT_SECRET = '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';
