@@ -13,7 +13,8 @@ interface QRProps {
 }
 
 export const EquipmentQR = ({ equipment }: QRProps) => {
-  const qrValue = `EQ-${equipment.officeUniqueKey}-${equipment.id}`;
+  // ✅ UPDATE: Ab ye scan hote hi seedha online report portal kholega
+  const qrValue = `https://equipment-history-management.onrender.com/public-report?id=${equipment.id}`;
 
   return (
     <div className="w-full max-w-[250px] p-4 bg-white border-2 border-[#D41217] flex flex-col items-center rounded-xl shadow-sm overflow-hidden text-left">
@@ -28,14 +29,12 @@ export const EquipmentQR = ({ equipment }: QRProps) => {
         </span>
       </div>
 
-      {/* 2. ✅ New Layout: Office & Div (One Line) + Large Branch Name */}
+      {/* 2. New Layout: Office & Div (One Line) + Large Branch Name */}
       <div className="text-center mb-3 w-full px-1">
-        {/* SRO AGRA & Division in one line */}
         <p className="text-[12px] font-bold text-slate-600 uppercase leading-tight tracking-tight">
           {equipment.officeName} | {equipment.division}
         </p>
         
-        {/* Branch Name: Thoda bada aur Bold */}
         <p className="text-[13px] font-black text-slate-900 uppercase leading-tight mt-1.5 border-t border-slate-100 pt-1">
           {equipment.installedAt || "BRANCH NAME"}
         </p>
