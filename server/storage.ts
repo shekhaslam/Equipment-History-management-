@@ -5,35 +5,58 @@ import { sql } from "drizzle-orm";
 export class DatabaseStorage {
   private isCloud = process.env.NODE_ENV === "production"; 
 
-  // ✅ Database instance ko safe tareeke se lene ke liye helper
   private async getDb() {
     return await dbPromise;
   }
 
-  // ✅ 1. Status Update (Render + Local Dono ke liye)
-  async updateEquipmentStatus(id: number, status: string) {
+  // ✅ 1. Get All Equipment (Inventory List fix)
+  async getAllEquipment(userId: string) {
     const db = await this.getDb();
     if (this.isCloud) {
-      await db.execute(sql`UPDATE equipment SET status = ${status} WHERE id = ${id}`);
+      const res = await db.execute(sql`SELECT * FROM equipment WHERE user_id = ${userId} OR userid = ${userId}`);
+      return res.rows;
     } else {
       // @ts-ignore
-      db.session.client.prepare('UPDATE equipment SET status = ? WHERE id = ?').run(status, id);
+      return db.session.client.prepare('SELECT * FROM equipment WHERE userId = ?').all(userId);
     }
-    return true;
   }
 
-  // ✅ 2. Machine Details (Public Report isi se data uthayegi)
+  // ✅ 2. Create Equipment (Save Record fix)
+  async createEquipment(ins: any, rep: any[] = []) {
+    const db = await this.getDb();
+    const createdAt = new Date().toLocaleDateString('en-GB');
+
+    if (this.isCloud) {
+      const res = await db.execute(sql`
+        INSERT INTO equipment (user_id, office_name, division, area, pincode, equipment_name, model, serial_number, location, model_number, manufacturing_date, installed_at, installation_date, monthly_usage, remarks, status, created_at)
+        VALUES (${ins.userId}, ${ins.officeName || ""}, ${ins.division || ""}, ${ins.area || ""}, ${ins.pincode || ""}, ${ins.equipmentName || ""}, ${ins.model || ""}, ${ins.serialNumber || ""}, ${ins.location || ""}, ${ins.modelNumber || ""}, ${ins.manufacturingDate || ""}, ${ins.installedAt || ""}, ${ins.installationDate || ""}, ${ins.monthlyUsage || ""}, ${ins.remarks || ""}, ${ins.status || "ACTIVE"}, ${createdAt})
+        RETURNING id
+      `);
+      const newId = res.rows[0].id;
+      return { ...ins, id: newId };
+    } else {
+      // @ts-ignore
+      const info = db.session.client.prepare(`
+        INSERT INTO equipment (userId, officeName, division, area, pincode, equipmentName, model, serialNumber, location, modelNumber, manufacturingDate, installedAt, installationDate, monthlyUsage, remarks, status, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(ins.userId, ins.officeName || "", ins.division || "", ins.area || "", ins.pincode || "", ins.equipmentName || "", ins.model || "", ins.serialNumber || "", ins.location || "", ins.modelNumber || "", ins.manufacturingDate || "", ins.installedAt || "", ins.installationDate || "", ins.monthlyUsage || "", ins.remarks || "", ins.status || "ACTIVE", createdAt);
+      return { ...ins, id: info.lastInsertRowid };
+    }
+  }
+
+  // ✅ 3. Machine Details (Public Report fix)
   async getEquipmentByIdOnly(id: number) {
     const db = await this.getDb();
     if (this.isCloud) {
       const res = await db.execute(sql`SELECT * FROM equipment WHERE id = ${id}`);
       return res.rows[0] || null;
+    } else {
+      // @ts-ignore
+      return db.session.client.prepare('SELECT * FROM equipment WHERE id = ?').get(id) || null;
     }
-    // @ts-ignore
-    return db.session.client.prepare('SELECT * FROM equipment WHERE id = ?').get(id) || null;
   }
 
-  // ✅ 3. User Report Submit (Online Form ke liye)
+  // ✅ 4. Report Submission (User Ticket fix)
   async createRepairRequest(ins: any): Promise<any> {
     const db = await this.getDb();
     const ticketNo = `DOP-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -55,10 +78,22 @@ export class DatabaseStorage {
     }
   }
 
-  // --- LOCAL DASHBOARD FUNCTIONS ---
-  
+  // Status Update Helper
+  async updateEquipmentStatus(id: number, status: string) {
+    const db = await this.getDb();
+    if (this.isCloud) {
+      await db.execute(sql`UPDATE equipment SET status = ${status} WHERE id = ${id}`);
+    } else {
+      // @ts-ignore
+      db.session.client.prepare('UPDATE equipment SET status = ? WHERE id = ?').run(status, id);
+    }
+    return true;
+  }
+
+  // Local-only Dashboard helpers (Bina badlav ke)
   async getEquipment(id: number, userId: string) {
     const db = await this.getDb();
+    if (this.isCloud) return null;
     // @ts-ignore
     const res = db.session.client.prepare('SELECT * FROM equipment WHERE id = ? AND userId = ?').get(id, userId);
     if (!res) return null;
@@ -67,61 +102,11 @@ export class DatabaseStorage {
     return { ...res, repairs: itemRepairs };
   }
 
-  async getAllEquipment(userId: string) {
-    const db = await this.getDb();
-    // @ts-ignore
-    const rows = db.session.client.prepare('SELECT * FROM equipment WHERE userId = ?').all(userId);
-    // @ts-ignore
-    const allRepairs = db.session.client.prepare('SELECT * FROM repairs').all();
-    return rows.map((item: any) => ({
-      ...item,
-      repairs: allRepairs.filter((r: any) => r.equipmentId === item.id)
-    }));
-  }
-
-  async updateEquipment(id: number, userId: string, ins: any, rep: any[] = []) {
-    const db = await this.getDb();
-    // @ts-ignore
-    db.session.client.prepare(`
-      UPDATE equipment 
-      SET officeName=?, division=?, area=?, pincode=?, equipmentName=?, model=?, serialNumber=?, location=?, modelNumber=?, manufacturingDate=?, installedAt=?, installationDate=?, monthlyUsage=?, remarks=?, status=?
-      WHERE id = ? AND userId = ?
-    `).run(ins.officeName, ins.division, ins.area, ins.pincode, ins.equipmentName, ins.model, ins.serialNumber, ins.location, ins.modelNumber, ins.manufacturingDate, ins.installedAt, ins.installationDate, ins.monthlyUsage, ins.remarks, ins.status, id, userId);
-    
-    await this.saveRepairs(id, rep);
-    return this.getEquipment(id, userId);
-  }
-
-  async createEquipment(ins: any, rep: any[] = []) {
-    const db = await this.getDb();
-    // @ts-ignore
-    const info = db.session.client.prepare(`
-      INSERT INTO equipment (userId, officeName, division, area, pincode, equipmentName, model, serialNumber, location, modelNumber, manufacturingDate, installedAt, installationDate, monthlyUsage, remarks, status, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(ins.userId, ins.officeName || "", ins.division || "", ins.area || "", ins.pincode || "", ins.equipmentName || "", ins.model || "", ins.serialNumber || "", ins.location || "", ins.modelNumber || "", ins.manufacturingDate || "", ins.installedAt || "", ins.installationDate || "", ins.monthlyUsage || "", ins.remarks || "", ins.status || "ACTIVE", new Date().toLocaleDateString('en-GB'));
-
-    const newId = info.lastInsertRowid;
-    if (rep.length > 0) { await this.saveRepairs(Number(newId), rep); }
-    return this.getEquipment(Number(newId), ins.userId);
-  }
-
   async getAllTickets() {
     const db = await this.getDb();
+    if (this.isCloud) return [];
     // @ts-ignore
     return db.session.client.prepare('SELECT * FROM repair_requests').all();
-  }
-
-  async swipeTicketToHistory(ticketId: number, repairData: { date: string, nature: string, amount: string }) {
-    const db = await this.getDb();
-    // @ts-ignore
-    const ticket = db.session.client.prepare('SELECT * FROM repair_requests WHERE id = ?').get(ticketId);
-    if (!ticket) return null;
-
-    // @ts-ignore
-    db.session.client.prepare('INSERT INTO repairs (equipmentId, date, natureOfRepair, amount) VALUES (?, ?, ?, ?)').run(ticket.equipmentId, repairData.date, repairData.nature, String(repairData.amount));
-    // @ts-ignore
-    db.session.client.prepare('UPDATE repair_requests SET status = "resolved" WHERE id = ?').run(ticketId);
-    return true;
   }
 
   async softDeleteEquipment(id: number) {
@@ -131,20 +116,7 @@ export class DatabaseStorage {
     return true;
   }
 
-  async getTrash() {
-    return { equipment: [], tickets: [] };
-  }
-
-  private async saveRepairs(eid: number, rep: any[] = []) {
-    const db = await this.getDb();
-    // @ts-ignore
-    db.session.client.prepare('DELETE FROM repairs WHERE equipmentId = ?').run(eid);
-    // @ts-ignore
-    const insert = db.session.client.prepare('INSERT INTO repairs (equipmentId, date, natureOfRepair, amount) VALUES (?, ?, ?, ?)');
-    for (const r of rep) {
-      insert.run(eid, r.date, r.natureOfRepair, String(r.amount));
-    }
-  }
+  async getTrash() { return { equipment: [], tickets: [] }; }
 }
 
 export const storage = new DatabaseStorage();
