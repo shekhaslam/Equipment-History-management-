@@ -1,0 +1,6 @@
+node_modules
+.git
+attached_assets
+*.bat
+EXE_CONVERSION_GUIDE.md
+client/requirements.md
