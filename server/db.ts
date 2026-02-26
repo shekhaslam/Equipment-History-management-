@@ -1,23 +1,31 @@
+import { neon, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import ws from 'ws';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import Database from 'better-sqlite3';
+import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
 import * as schema from "@shared/schema";
-import path from "path";
 
-// 1. Initialize function ko alag rakhein
-async function createDbConnection() {
-  if (process.env.DATABASE_URL) {
-    // Cloud Mode: Neon PostgreSQL
-    const { drizzle } = await import("drizzle-orm/neon-serverless");
-    const { neon } = await import("@neondatabase/serverless");
-    const sql = neon(process.env.DATABASE_URL);
-    return drizzle(sql, { schema });
-  } else {
-    // Local Mode: SQLite
-    const Database = (await import("better-sqlite3")).default;
-    const { drizzle } = await import("drizzle-orm/better-sqlite3");
-    const dbPath = path.resolve(process.cwd(), "data", "sqlite.db");
-    const sqlite = new Database(dbPath);
-    return drizzle(sqlite, { schema });
+neonConfig.webSocketConstructor = ws;
+
+// AAPKA PAKKA LINK
+const cloudUrl = "postgres://neondb_owner:npg_R4nZ5OTrGzbe@ep-blue-paper-a5r69o3g.us-east-2.aws.neon.tech/neondb?sslmode=require";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const sqlitePath = path.resolve(__dirname, '../sqlite.db');
+
+export const db = (async () => {
+  const sqlite = new Database(sqlitePath);
+  const localDb = drizzleSqlite(sqlite, { schema });
+  try {
+    const sql = neon(cloudUrl);
+    const onlineDb = drizzle(sql, { schema });
+    console.log("✅ Cloud Database Connected!");
+    return onlineDb;
+  } catch (e) {
+    console.log("❌ Cloud connection failed, using Local.");
+    return localDb;
   }
-}
-
-// 2. Export db as a Promise to avoid top-level await error
-export const db = createDbConnection();
+})();
