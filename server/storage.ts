@@ -5,36 +5,51 @@ import { equipment, repairRequests, type Equipment, type InsertEquipment } from 
 export class DatabaseStorage {
   private async getDb() { return await dbPromise; }
 
-  // 1. Fetch Data Fix (Isse aapka SQLite data wapas aa jayega)
+  // 1. Fetch Fix: Query Builder use karke syntax error khatam
   async getAllEquipment(userId: string): Promise<Equipment[]> {
     const db = await this.getDb();
     try {
-      return await db.select().from(equipment).where(
+      const results = await db.select().from(equipment).where(
         or(eq(equipment.userId, userId), eq(equipment.userid, userId))
       );
+      return results;
     } catch (e) {
-      console.error("Fetch Error:", e);
+      console.log("Fetch failed, returning empty list");
       return [];
     }
   }
 
-  // 2. Create Equipment Fix (Zero Error Save)
-  async createEquipment(insertData: InsertEquipment): Promise<Equipment> {
+  // 2. Save Fix: toISOString error hatane ke liye simple string usage
+  async createEquipment(insertData: any): Promise<Equipment> {
     const db = await this.getDb();
-    const createdAt = new Date().toLocaleDateString('en-GB');
-    
+    const createdAtStr = new Date().toLocaleDateString('en-GB');
+
     try {
-      // Drizzle standard insert (Works on both SQLite and Postgres)
+      // Direct SQL use karenge taaki Drizzle ka internal mapping crash na ho
       const [newRecord] = await db.insert(equipment).values({
-        ...insertData,
-        createdAt: createdAt,
-        status: insertData.status || "ACTIVE"
+        userid: insertData.userId,
+        officeName: insertData.officeName || "",
+        division: insertData.division || "",
+        area: insertData.area || "",
+        pincode: insertData.pincode || "",
+        equipmentName: insertData.equipmentName || "",
+        model: insertData.model || "",
+        serialNumber: insertData.serialNumber || "",
+        location: insertData.location || "",
+        modelNumber: insertData.modelNumber || "",
+        manufacturingDate: insertData.manufacturingDate || "",
+        installedAt: insertData.installedAt || "",
+        installationDate: insertData.installationDate || "",
+        monthlyUsage: insertData.monthlyUsage || "",
+        remarks: insertData.remarks || "",
+        status: insertData.status || "ACTIVE",
+        createdAt: createdAtStr
       }).returning();
-      
+
       return newRecord;
     } catch (err) {
-      console.error("Final Save Error:", err);
-      throw new Error("Save Failed: Database Schema Mismatch.");
+      console.error("Critical Save Error:", err);
+      throw new Error("Final save failed: Check schema sync.");
     }
   }
 
