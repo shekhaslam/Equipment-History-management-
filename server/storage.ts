@@ -5,63 +5,48 @@ import { equipment, repairRequests, type Equipment, type InsertEquipment } from 
 export class DatabaseStorage {
   private async getDb() { return await dbPromise; }
 
-  // 1. Fetch Fix: Query Builder use karke syntax error khatam
   async getAllEquipment(userId: string): Promise<Equipment[]> {
     const db = await this.getDb();
     try {
-      const results = await db.select().from(equipment).where(
-        or(eq(equipment.userId, userId), eq(equipment.userid, userId))
-      );
-      return results;
+      // Direct SQL for safety against schema mismatch
+      const res = await db.execute(sql`SELECT * FROM equipment WHERE user_id = ${userId} OR userid = ${userId}`);
+      return (res.rows || res) as Equipment[];
     } catch (e) {
-      console.log("Fetch failed, returning empty list");
       return [];
     }
   }
 
-  // 2. Save Fix: toISOString error hatane ke liye simple string usage
-  async createEquipment(insertData: any): Promise<Equipment> {
+  async createEquipment(ins: any): Promise<Equipment> {
     const db = await this.getDb();
-    const createdAtStr = new Date().toLocaleDateString('en-GB');
-
+    const createdAt = new Date().toLocaleDateString('en-GB');
+    
     try {
-      // Direct SQL use karenge taaki Drizzle ka internal mapping crash na ho
-      const [newRecord] = await db.insert(equipment).values({
-        userid: insertData.userId,
-        officeName: insertData.officeName || "",
-        division: insertData.division || "",
-        area: insertData.area || "",
-        pincode: insertData.pincode || "",
-        equipmentName: insertData.equipmentName || "",
-        model: insertData.model || "",
-        serialNumber: insertData.serialNumber || "",
-        location: insertData.location || "",
-        modelNumber: insertData.modelNumber || "",
-        manufacturingDate: insertData.manufacturingDate || "",
-        installedAt: insertData.installedAt || "",
-        installationDate: insertData.installationDate || "",
-        monthlyUsage: insertData.monthlyUsage || "",
-        remarks: insertData.remarks || "",
-        status: insertData.status || "ACTIVE",
-        createdAt: createdAtStr
-      }).returning();
-
+      // Tagged template format use karke 500 error khatam
+      const res = await db.execute(sql`
+        INSERT INTO equipment (
+          user_id, office_name, division, area, pincode, 
+          equipment_name, model_number, serial_number, status, created_at,
+          office_unique_key, usage, manufacturing_date, install_location, installation_date, remarks
+        ) VALUES (
+          ${ins.userId}, ${ins.officeName}, ${ins.division}, ${ins.area}, ${ins.pincode},
+          ${ins.equipmentName}, ${ins.modelNumber}, ${ins.serialNumber}, ${ins.status || 'ACTIVE'}, ${createdAt},
+          ${ins.officeUniqueKey || ''}, ${ins.usage || ''}, ${ins.manufacturingDate || ''}, 
+          ${ins.installLocation || ''}, ${ins.installationDate || ''}, ${ins.remarks || ''}
+        ) RETURNING *
+      `);
+      
+      const newRecord = (res.rows ? res.rows[0] : res[0]) as Equipment;
       return newRecord;
     } catch (err) {
-      console.error("Critical Save Error:", err);
-      throw new Error("Final save failed: Check schema sync.");
+      console.error("Final Save Error:", err);
+      throw new Error("Save Failed: Database Schema Mismatch.");
     }
   }
 
   async getEquipmentByIdOnly(id: number) {
     const db = await this.getDb();
-    const [res] = await db.select().from(equipment).where(eq(equipment.id, id));
-    return res || null;
-  }
-
-  async getAllTickets() {
-    const db = await this.getDb();
-    return await db.select().from(repairRequests);
+    const res = await db.execute(sql`SELECT * FROM equipment WHERE id = ${id}`);
+    return (res.rows ? res.rows[0] : res[0]) || null;
   }
 }
 
