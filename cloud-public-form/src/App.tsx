@@ -230,8 +230,9 @@ function App() {
             // Correctly use data.data from Google Script response
             const equip = data.data;
             setEquipment(equip);
-            // Use Name as fallback if Category is missing
-            setSelectedAssetType(equip.category || equip.name || "Equipment");
+            // Strong fallback for categorization (Category OR Name)
+            const cat = equip.category || equip.name || "Appliance";
+            setSelectedAssetType(cat);
             setError(null);
             }
         })

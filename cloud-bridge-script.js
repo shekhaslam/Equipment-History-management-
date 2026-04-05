@@ -62,7 +62,11 @@ function doGet(e) {
     const data = sheet.getDataRange().getValues();
     let tickets = [];
     for (let i = 1; i < data.length; i++) {
-        if (data[i][1]) tickets.push(data[i][1].toString());
+        const status = data[i][9]; // Column J
+        // Return both PENDING and SYCHED/PROCESSING so local app doesn't delete them
+        if (status && status !== "RESOLVED" && status !== "ARCHIVED") {
+            if (data[i][1]) tickets.push(data[i][1].toString());
+        }
     }
     return ContentService.createTextOutput(JSON.stringify({ success: true, tickets })).setMimeType(ContentService.MimeType.JSON);
   }
@@ -168,10 +172,10 @@ function doPost(e) {
     }
     
     const ticketNo = generateShortID();
-    const faultDomain = body.faultDomain || body.assetType || body.domain || "";
-    // Robustly combine Domain: Issue to ensure it shows up in Columns
+    const faultDomain = body.faultDomain || body.assetType || body.domain || "DOP Asset";
+    // Force prefixing to ensure Column G always has the Asset Name
     let combinedFault = body.issueType;
-    if (faultDomain && !body.issueType.includes(faultDomain)) {
+    if (faultDomain && !body.issueType.toUpperCase().includes(faultDomain.toUpperCase())) {
         combinedFault = `${faultDomain}: ${body.issueType}`;
     }
     

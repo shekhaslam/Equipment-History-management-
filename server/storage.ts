@@ -239,10 +239,10 @@ export const storage = new (class SqliteStorage {
       SELECT r.*, e.equipmentName, e.serialNumber, e.officeName 
       FROM repair_requests r
       LEFT JOIN equipment e ON r.equipmentId = e.id
-      WHERE r.status IN ('pending', 'processing') AND (e.userId = ? OR e.userId IS NULL)
+      WHERE r.status IN ('pending', 'processing', 'REPORTER_SYNC_PENDING') 
+      AND (e.userId = ? OR e.userId IS NULL)
       ORDER BY r.id DESC
     `).all(userId);
-  }
 
   async deleteTicketByNo(ticketNo: string) {
     sqlite.prepare("DELETE FROM repair_requests WHERE ticketNo = ?").run(ticketNo);
@@ -256,22 +256,10 @@ export const storage = new (class SqliteStorage {
     // Save resolution details into the ticket record itself (for audit)
     const fullResolution = `RESOLVED | ${resolution.nature} | Inv: ${resolution.invoiceNo} | Cost: ${resolution.amount} | Notes: ${resolution.remarks}`;
     
-    sqlite.prepare("UPDATE repair_requests SET status = 'archived', issueDescription = ? WHERE id = ?")
+    // NATIVE RESOLVE: Just mark as archived/resolved in repair_requests
+    // This keeps it in the "Service History" for this specific equipment without needing a separate table
+    sqlite.prepare("UPDATE repair_requests SET status = 'resolved', issueDescription = ? WHERE id = ?")
       .run(`${ticket.issueDescription} ||| ${fullResolution}`, ticketId);
-
-    // AUTO-SWIPE: Immediately move resolved ticket to official history
-    sqlite.prepare(`
-      INSERT INTO repairs (equipmentId, date, natureOfRepair, amount, invoiceNo, vendorName, remarks)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      ticket.equipmentId, 
-      resolution.date || new Date().toLocaleDateString('en-GB'), 
-      resolution.nature || "Verified Repair", 
-      resolution.amount || "0", 
-      resolution.invoiceNo || "", 
-      resolution.vendorName || "DOP Resolved Ticket", 
-      resolution.remarks ? `[Ticket: ${ticket.ticketNo}] ${resolution.remarks}` : `[Ticket: ${ticket.ticketNo}]`
-    );
 
     return true;
   }
