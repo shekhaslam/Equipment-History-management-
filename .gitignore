@@ -1,7 +1,48 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production / Build
+dist/
+build/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+win-unpacked/
+mac/
+linux/
+
+# Environment / Secrets (CRITICAL: DO NOT COMMIT)
+.env
+.env.*
+client_secret*.json
+*.json.apps.googleusercontent.com
+*.apps.googleusercontent.com.json
+
+# Databases
+*.db
+*.db-journal
+*.sqlite
+data/sqlite.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor/OS
+.vscode/
+.idea/
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gzbuild/ 
-node_modules/ 
+Thumbs.db
+
+# Accidental Typos/Misc
+20'
+20.0.0'
+npm

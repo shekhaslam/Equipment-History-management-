@@ -3,7 +3,10 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
+import cors from "cors";
+
 const app = express();
+app.use(cors()); // ✅ Enable CORS for mobile scans
 const httpServer = createServer(app);
 
 app.use(express.json());
@@ -33,13 +36,11 @@ export function log(message: string, source = "express") {
     await setupVite(httpServer, app);
   }
 
-  // --- RENDER CLOUD FIX START ---
-  // Port dynamic hona chahiye aur host 0.0.0.0
-  const port = Number(process.env.PORT) || 5001;
-  const host = "0.0.0.0"; 
+  // WINDOWS FIX: Port 5001 aur Listen on all interfaces (0.0.0.0)
+  const port = 5001;
+  const host = "0.0.0.0";
 
   httpServer.listen(port, host, () => {
-    log(`SERVER RUNNING AT http://${host}:${port}`);
+    log(`SERVER RUNNING ON ALL INTERFACES AT http://localhost:${port}`);
   });
-  // --- RENDER CLOUD FIX END ---
 })();

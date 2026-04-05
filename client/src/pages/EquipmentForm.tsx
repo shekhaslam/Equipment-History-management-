@@ -92,7 +92,7 @@ export default function EquipmentForm() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 text-left">
-      <div className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="mx-auto max-w-[98%] px-4 py-8">
         {/* ✅ Updated Back Button Path */}
         <PageHeader 
           title={isEditMode ? "Edit Sheet" : "Create Sheet"} 

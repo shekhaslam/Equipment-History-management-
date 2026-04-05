@@ -60,10 +60,15 @@ export const generateProPDF = (equipment: any, isPreview: boolean = false) => {
 
   autoTable(doc, {
     startY: tableY + 4,
-    head: [['Date', 'Nature of Repair', 'Amount (INR)']],
-    body: equipment.repairs?.map((r: any) => [r.date || "---", r.natureOfRepair || "---", r.amount || "0"]) || [],
+    head: [['Date', 'Vendor & Invoice', 'Nature of Repair', 'Amount (INR)']],
+    body: equipment.repairs?.map((r: any) => [
+      r.date || "---", 
+      (r.vendorName || r.invoiceNo) ? `${r.vendorName || 'N/A'}\n${r.invoiceNo ? 'Inv: ' + r.invoiceNo : ''}`.trim() : "---",
+      `${r.natureOfRepair || "---"}${r.remarks ? `\n(Note: ${r.remarks})` : ''}`, 
+      r.amount || "0"
+    ]) || [],
     headStyles: { fillColor: [212, 18, 23] }, 
-    styles: { fontSize: 9 }
+    styles: { fontSize: 8, cellPadding: 2 }
   });
 
   // 6. FINAL COST & NOTICE BOX
@@ -103,4 +108,68 @@ export const generateProPDF = (equipment: any, isPreview: boolean = false) => {
   } else {
     doc.save(`${equipment.serialNumber}_Report.pdf`);
   }
+};
+
+export const generateServiceLogPDF = (equipment: any, ticket: any, repair: any) => {
+  const doc = new jsPDF();
+  
+  // 1. HEADER & LOGO
+  try { doc.addImage("/assets/india-post-logo.png", 'PNG', 15, 10, 25, 15); } catch (e) {}
+
+  doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(212, 18, 23); 
+  doc.text("DEPARTMENT OF POSTS", 115, 18, { align: "center" });
+  doc.setFontSize(14).setTextColor(0).text("Official Service Log", 115, 26, { align: "center" });
+
+  doc.setFontSize(10);
+  doc.text(`TICKET NO: ${ticket.ticketNo}`, 130, 38);
+  doc.text(`DATE: ${repair?.date || new Date().toLocaleDateString('en-GB')}`, 130, 44);
+
+  autoTable(doc, {
+    startY: 55,
+    head: [['Machine Details', '']],
+    body: [
+      ["Equipment:", `${equipment.equipmentName} (${equipment.modelNumber})`],
+      ["Serial No:", equipment.serialNumber],
+      ["Office:", `${equipment.officeName} | ${equipment.division}`],
+    ],
+    theme: 'grid', styles: { fontSize: 10, cellPadding: 3 }, headStyles: { fillColor: [212, 18, 23] }
+  });
+
+  const yAfterEq = (doc as any).lastAutoTable.finalY + 10;
+  
+  autoTable(doc, {
+    startY: yAfterEq,
+    head: [['Reporter Information', '']],
+    body: [
+      ["Reporter Name:", ticket.reporterName || "N/A"],
+      ["Branch:", ticket.reporterBranch || "N/A"],
+      ["Mobile:", ticket.reporterMobile || "N/A"],
+      ["Issue Description:", ticket.issueDescription || "N/A"]
+    ],
+    theme: 'grid', styles: { fontSize: 10, cellPadding: 3 }, headStyles: { fillColor: [50, 50, 50] }
+  });
+
+  const yAfterRep = (doc as any).lastAutoTable.finalY + 10;
+
+  autoTable(doc, {
+    startY: yAfterRep,
+    head: [['Admin Resolution Details', '']],
+    body: [
+      ["Nature of Work:", repair?.natureOfRepair || "N/A"],
+      ["Vendor/Company:", repair?.vendorName || "N/A"],
+      ["Invoice Number:", repair?.invoiceNo || "N/A"],
+      ["Total Cost:", `INR ${repair?.amount || "0"}`],
+      ["Admin Remarks:", repair?.remarks || "N/A"]
+    ],
+    theme: 'grid', styles: { fontSize: 10, cellPadding: 3 }, headStyles: { fillColor: [34, 197, 94] }
+  });
+
+  const footerY = doc.internal.pageSize.height - 35;
+  doc.setDrawColor(180).line(20, footerY, 70, footerY); 
+  doc.setFontSize(10).setTextColor(0).text("Reporter Signature", 45, footerY + 6, { align: "center" });
+  
+  doc.line(140, footerY, 190, footerY); 
+  doc.text("Office Seal & Sign", 165, footerY + 6, { align: "center" });
+
+  doc.save(`${ticket.ticketNo}_ServiceLog.pdf`);
 };

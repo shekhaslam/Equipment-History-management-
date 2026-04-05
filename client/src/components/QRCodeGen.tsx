@@ -12,59 +12,100 @@ interface QRProps {
   };
 }
 
+import { useEffect, useState } from 'react';
+
 export const EquipmentQR = ({ equipment }: QRProps) => {
-  // ✅ UPDATE: Ab ye scan hote hi seedha online report portal kholega
-  const qrValue = `https://equipment-history-management.onrender.com/public-report?id=${equipment.id}`;
+  const [serverIP, setServerIP] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/server-info')
+      .then(res => res.json())
+      .then(data => setServerIP(data.ip))
+      .catch(() => setServerIP(null));
+  }, []);
+
+  // ✅ Scan link pointing to the PERMANENT GLOBAL PUBLIC FORM (Vercel)
+  const baseUrl = "https://project-pt0db.vercel.app";
+    
+  const qrValue = `${baseUrl}?id=${equipment.id}`;
 
   return (
-    <div className="w-full max-w-[250px] p-4 bg-white border-2 border-[#D41217] flex flex-col items-center rounded-xl shadow-sm overflow-hidden text-left">
-      
-      {/* 1. Header Section */}
-      <div className="flex items-center gap-2 mb-3 border-b-2 border-red-50 pb-2 w-full justify-center">
-        <div className="w-7 h-7 bg-[#D41217] flex items-center justify-center text-[10px] text-white font-black rounded-full shadow-inner">
-          DoP
+    <div className="w-[110mm] h-[72mm] p-6 bg-white border-[2.5px] border-black flex flex-col items-center rounded-none shadow-none overflow-hidden text-left relative print:m-0 print:border-black print:shadow-none">
+
+      {/* 1. Header Section: Official Header Bar */}
+      <div className="flex items-center gap-4 mb-2.5 border-b-[2.5px] border-slate-900 pb-2 w-full justify-between px-1">
+        <div className="flex items-center gap-4">
+          <div className="shrink-0 bg-white">
+             <img src="/assets/india-post-logo.png" alt="Logo" className="w-14 h-11 object-contain" />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-[16px] font-black text-slate-900 leading-tight uppercase tracking-tight">India Post</h1>
+            <p className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest leading-none">Dept. of Posts, Govt. of India</p>
+            <p className="text-[15px] font-black text-red-600 uppercase mt-0.5 tracking-tighter">Equipment Repair Request</p>
+          </div>
         </div>
-        <span className="text-[15px] font-black uppercase tracking-widest text-[#D41217]">
-          India Post
-        </span>
-      </div>
-
-      {/* 2. New Layout: Office & Div (One Line) + Large Branch Name */}
-      <div className="text-center mb-3 w-full px-1">
-        <p className="text-[12px] font-bold text-slate-600 uppercase leading-tight tracking-tight">
-          {equipment.officeName} | {equipment.division}
-        </p>
         
-        <p className="text-[13px] font-black text-slate-900 uppercase leading-tight mt-1.5 border-t border-slate-100 pt-1">
-          {equipment.installedAt || "BRANCH NAME"}
-        </p>
+        <div className="text-right flex flex-col justify-center max-w-[45%]">
+          <p className="text-[12px] font-black text-slate-900 uppercase leading-none mb-0.5 truncate">
+            {equipment.officeName}
+          </p>
+          <p className="text-[10px] font-bold text-slate-600 uppercase leading-none truncate">
+            {equipment.division}
+          </p>
+        </div>
       </div>
 
-      {/* 3. QR Code Section */}
-      <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg shadow-inner mb-3">
-        <QRCodeSVG 
-          value={qrValue} 
-          size={140} 
-          level={"H"} 
-          includeMargin={false}
-          imageSettings={{
-            src: "/assets/india-post-logo.png",
-            x: undefined,
-            y: undefined,
-            height: 24,
-            width: 24,
-            excavate: true,
-          }}
-        />
+      <div className="flex w-full gap-5 items-start h-full overflow-hidden">
+        {/* 2. QR Code Section (Left) */}
+        <div className="p-1.5 bg-white border-2 border-slate-200 rounded-xl shadow-sm shrink-0">
+          <QRCodeSVG
+            value={qrValue}
+            size={125}
+            level={"H"}
+            includeMargin={true}
+            imageSettings={{
+              src: "/assets/india-post-logo.png",
+              x: undefined,
+              y: undefined,
+              height: 28,
+              width: 28,
+              excavate: true,
+            }}
+          />
+        </div>
+
+        {/* 3. Details Section (Right) */}
+        <div className="flex-1 flex flex-col justify-between py-0.5 h-full min-w-0">
+          <div>
+            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Asset Name</p>
+            <p className="text-[17px] font-black text-slate-900 uppercase leading-tight line-clamp-2 break-words">
+              {equipment.equipmentName}
+            </p>
+          </div>
+
+          <div className="mt-2">
+            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Serial Number</p>
+            <p className="text-[20px] font-black text-[#D41217] leading-none tracking-tight font-mono truncate">
+              {equipment.serialNumber}
+            </p>
+          </div>
+
+          <div className="mt-3 border-t-2 border-dashed border-slate-300 pt-2.5">
+            <p className="text-[10px] font-black text-slate-500 uppercase mb-0.5">Installed At</p>
+            <p className="text-[14px] font-black text-slate-900 uppercase leading-none truncate">
+              {equipment.installedAt || "MAIN OFFICE"}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* 4. Equipment Details Footer */}
-      <div className="w-full text-center bg-[#D41217]/5 py-2 rounded-lg border border-[#D41217]/10">
-        <p className="text-[14px] font-black uppercase text-slate-900 truncate px-1">
-          {equipment.equipmentName}
+      {/* 4. Footer Branding & URL Debug */}
+      <div className="absolute bottom-1.5 left-5 right-5 flex justify-between items-center opacity-40">
+        <p className="text-[7px] font-bold text-slate-900 uppercase">
+          E-History System | Managed by DOP
         </p>
-        <p className="text-[15px] font-bold text-[#D41217] mt-1 border-t border-dashed border-[#D41217]/20 pt-1 tracking-tighter">
-          S/N: {equipment.serialNumber}
+        <p className="text-[7px] font-mono text-slate-400 truncate max-w-[50%]">
+          {baseUrl}
         </p>
       </div>
     </div>

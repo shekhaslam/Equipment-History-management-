@@ -1,20 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { EquipmentQR } from "../components/QRCodeGen"; 
+import { EquipmentQR } from "../components/QRCodeGen";
 import { Button } from "../components/ui/button";
-import { Printer, ArrowLeft, CheckCircle2, Circle } from "lucide-react";
-import { useLocation } from "wouter";
+import { Printer, ArrowLeft, CheckCircle2, Circle, Search } from "lucide-react";
+import { useLocation, useSearch } from "wouter";
 
 export default function QRManagement() {
   const [, setLocation] = useLocation();
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const queryParams = new URLSearchParams(useSearch());
+  const initialSearch = queryParams.get("search") || "";
   
-  const { data: equipments, isLoading } = useQuery<any[]>({ 
-    queryKey: ["/api/equipment"] 
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [search, setSearch] = useState(initialSearch);
+
+  const { data: equipments, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/equipment"]
   });
 
+  // Auto-select and filter if landing via shortcut
+  useEffect(() => {
+    if (equipments && initialSearch) {
+      const matched = equipments.filter(item => 
+        item.equipmentName?.toLowerCase().includes(initialSearch.toLowerCase()) || 
+        item.serialNumber?.toLowerCase().includes(initialSearch.toLowerCase())
+      );
+      if (matched.length > 0) {
+        setSelectedIds(matched.map(m => m.id));
+        
+        // Direct Print logic
+        if (queryParams.get("print") === "true") {
+          setTimeout(() => {
+            window.print();
+          }, 1000); // Give time for QR to render
+        }
+      }
+    }
+  }, [equipments, initialSearch]);
+
   const toggleSelect = (id: number) => {
-    setSelectedIds(prev => 
+    setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
@@ -38,13 +62,23 @@ export default function QRManagement() {
           <Button onClick={selectAll} variant="outline" className="font-bold border-slate-300">
             {selectedIds.length === equipments?.length ? "DESELECT ALL" : "SELECT ALL"}
           </Button>
+          <div className="relative w-64 group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Search S/N or Name..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 h-10 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-[#D41217]/10 outline-none transition-all"
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
           <span className="font-black text-[#D41217]">{selectedIds.length} SELECTED</span>
-          <Button 
+          <Button
             disabled={selectedIds.length === 0}
-            onClick={() => window.print()} 
+            onClick={() => window.print()}
             className="bg-[#D41217] text-white font-bold px-8 shadow-lg disabled:bg-slate-300"
           >
             <Printer className="w-5 h-5 mr-2" /> PRINT SELECTED
@@ -54,31 +88,28 @@ export default function QRManagement() {
 
       {/* 2. QR GRID (Improved Layout) */}
       <main className="p-10 mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 print:grid-cols-2 print:gap-4 print:p-0">
-          {equipments?.map((item) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 print:grid-cols-2 print:gap-x-4 print:gap-y-6 print:p-0 justify-items-center">
+          {equipments?.filter(item => 
+            item.equipmentName?.toLowerCase().includes(search.toLowerCase()) || 
+            item.serialNumber?.toLowerCase().includes(search.toLowerCase())
+          ).map((item) => {
             const isSelected = selectedIds.includes(item.id);
             return (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 onClick={() => toggleSelect(item.id)}
-                className={`relative group p-4 bg-white rounded-3xl border-4 transition-all
-                  ${isSelected ? "border-[#D41217] shadow-xl" : "border-transparent opacity-70"}
-                  ${isSelected ? "print:flex" : "print:hidden"}
+                className={`relative group transition-all
+                  ${isSelected ? "is-selected ring-4 ring-offset-4 ring-[#D41217] rounded-sm" : "opacity-40 grayscale"}
                 `}
-                style={{ breakInside: 'avoid' }} // Extra page rokne ke liye
+                style={{ breakInside: 'avoid' }}
               >
-                <div className="no-print absolute top-4 right-4 z-10">
-                  {isSelected ? <CheckCircle2 className="w-8 h-8 text-green-500 fill-white" /> : <Circle className="w-8 h-8 text-slate-300" />}
+                <div className="no-print absolute -top-4 -right-4 z-10">
+                  {isSelected ? <CheckCircle2 className="w-10 h-10 text-[#D41217] fill-white shadow-lg" /> : <Circle className="w-8 h-8 text-slate-300" />}
                 </div>
 
-                <div className="flex justify-center print:scale-90">
+                <div className="print:scale-[0.95]">
                   <EquipmentQR equipment={item} />
                 </div>
-
-                {/* Footer only for Print (Optional) */}
-                <p className="hidden print:block text-[8px] text-center mt-1 text-slate-400">
-                  Dev: Shekh Aslam, RMS X DN
-                </p>
               </div>
             );
           })}
@@ -88,30 +119,51 @@ export default function QRManagement() {
       {/* 3. CLEAN PRINT CSS */}
       <style>{`
         @media print {
-          /* Faltu kachra aur extra pages saaf karein */
           .no-print, header, footer, .sidebar, button { display: none !important; }
           
           body, html { 
             background: white !important; 
             margin: 0 !important; 
             padding: 0 !important;
-            height: auto !important;
+            width: 100% !important;
+            height: 100% !important;
           }
 
-          /* Pages per sheet ki jagah humara grid kaam karega */
-          .grid {
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 10mm !important;
-          }
-
+          /* Thermal Printer Optimization */
           @page { 
-            size: A4; 
-            margin: 10mm; 
+            size: 120mm 70mm landscape; 
+            margin: 0; 
           }
 
-          /* Developer name ko extra page banane se rokna */
-          .page-break { display: none !important; }
+          main { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+          .grid {
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          /* Force hidden for anything not selected */
+          .grid > div {
+            display: none !important;
+          }
+
+          /* Only show selected ones in print */
+          .grid > div.is-selected {
+            display: block !important;
+            width: 110mm !important;
+            height: 72mm !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            margin: 0 auto 10mm auto !important; /* A4 par gap ke liye bottom margin */
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            -webkit-print-color-adjust: exact !important;
+          }
+
+          .print\\:scale-\\[0\\.95\\] {
+            transform: scale(1) !important;
+          }
         }
       `}</style>
     </div>

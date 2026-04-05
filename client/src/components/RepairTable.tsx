@@ -1,20 +1,20 @@
-import { InsertRepair } from "@shared/schema";
+import { InsertRepairsTable } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Calendar, Wrench, IndianRupee, Tool } from "lucide-react";
+import { Plus, Trash2, Calendar, Wrench, IndianRupee, Briefcase } from "lucide-react";
 
 interface RepairTableProps {
-  repairs: Partial<InsertRepair>[];
-  onChange: (repairs: Partial<InsertRepair>[]) => void;
+  repairs: Partial<InsertRepairsTable>[];
+  onChange: (repairs: Partial<InsertRepairsTable>[]) => void;
   readOnly?: boolean;
 }
 
 export function RepairTable({ repairs, onChange, readOnly = false }: RepairTableProps) {
   const addRow = () => {
-    onChange([...repairs, { date: "", natureOfRepair: "", amount: "" }]);
+    onChange([...repairs, { date: "", natureOfRepair: "", vendorName: "", invoiceNo: "", amount: "" }]);
   };
 
-  const updateRow = (index: number, field: keyof InsertRepair, value: string) => {
+  const updateRow = (index: number, field: keyof InsertRepairsTable, value: string) => {
     const newRepairs = [...repairs];
     newRepairs[index] = { ...newRepairs[index], [field]: value };
     onChange(newRepairs);
@@ -31,15 +31,21 @@ export function RepairTable({ repairs, onChange, readOnly = false }: RepairTable
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm overflow-hidden">
         
         {/* Professional Header with Icons */}
-        <div className="grid grid-cols-[180px_1fr_140px_40px] gap-6 mb-4 px-2">
+        <div className="grid grid-cols-[160px_1fr_150px_140px_100px_40px] gap-2 mb-4 px-2 hidden md:grid border-b border-slate-100 pb-2 min-w-[900px]">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <Calendar className="w-3 h-3" /> Date of Service
+            <Calendar className="w-3.5 h-3.5" /> Date
           </span>
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <Wrench className="w-3 h-3" /> Nature of Maintenance
+            <Wrench className="w-3.5 h-3.5" /> Maintenance
           </span>
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-end">
-            <IndianRupee className="w-3 h-3" /> Cost (INR)
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <Briefcase className="w-3.5 h-3.5" /> Vendor
+          </span>
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <Briefcase className="w-3.5 h-3.5" /> Invoice No
+          </span>
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-end pr-2">
+            <IndianRupee className="w-3.5 h-3.5" /> Cost
           </span>
           <span></span>
         </div>
@@ -53,8 +59,8 @@ export function RepairTable({ repairs, onChange, readOnly = false }: RepairTable
             </div>
           ) : (
             repairs.map((repair, index) => (
-              <div key={index} className="grid grid-cols-[180px_1fr_140px_40px] gap-6 items-center group animate-in slide-in-from-left-2 duration-300">
-                {/* Date Input with Calendar Icon */}
+              <div key={index} className="grid grid-cols-1 md:grid-cols-[160px_1fr_150px_140px_100px_40px] gap-2 items-start md:items-center group animate-in slide-in-from-left-2 duration-300 bg-slate-50/50 md:bg-transparent p-3 md:p-2 rounded-xl md:rounded-none border-b border-slate-50 last:border-0 overflow-hidden min-w-[900px]">
+                {/* Date Input */}
                 <div className="relative">
                   <Input
                     type="date"
@@ -65,18 +71,34 @@ export function RepairTable({ repairs, onChange, readOnly = false }: RepairTable
                   />
                 </div>
 
-                {/* Description Input with Wrench Placeholder Feel */}
-                <div className="relative">
-                  <Input
-                    value={repair.natureOfRepair || ""}
-                    disabled={readOnly}
-                    placeholder="Describe maintenance work (e.g. Fuser replacement)..."
-                    onChange={(e) => updateRow(index, "natureOfRepair", e.target.value)}
-                    className="h-11 border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-2 focus:ring-primary/10 rounded-xl text-sm"
-                  />
-                </div>
+                {/* Description Input */}
+                <Input
+                  value={repair.natureOfRepair || ""}
+                  disabled={readOnly}
+                  placeholder="Describe maintenance work"
+                  onChange={(e) => updateRow(index, "natureOfRepair", e.target.value)}
+                  className="h-11 border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-2 focus:ring-primary/10 rounded-xl text-sm"
+                />
 
-                {/* Amount Input with Fixed Rupee Symbol Feel */}
+                {/* Vendor name */}
+                <Input
+                  value={repair.vendorName || ""}
+                  disabled={readOnly}
+                  placeholder="Vendor Name"
+                  onChange={(e) => updateRow(index, "vendorName", e.target.value)}
+                  className="h-11 border-slate-200 bg-slate-50/30 font-bold text-xs"
+                />
+
+                {/* Invoice No */}
+                <Input
+                  value={repair.invoiceNo || ""}
+                  disabled={readOnly}
+                  placeholder="Invoice No"
+                  onChange={(e) => updateRow(index, "invoiceNo", e.target.value)}
+                  className="h-11 border-slate-200 bg-slate-50/30 text-xs font-mono text-slate-500"
+                />
+
+                {/* Amount Input */}
                 <div className="relative group/amount">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</div>
                   <Input
@@ -89,14 +111,14 @@ export function RepairTable({ repairs, onChange, readOnly = false }: RepairTable
                   />
                 </div>
 
-                {/* Remove Button - Stylish Red */}
+                {/* Remove Button */}
                 {!readOnly && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     onClick={() => removeRow(index)}
-                    className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 rounded-xl"
+                    className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 md:opacity-0 md:group-hover:opacity-100 rounded-xl ml-auto md:ml-0"
                   >
                     <Trash2 className="h-5 w-5" />
                   </Button>

@@ -82,70 +82,70 @@ function RegistrationForm({ onRegister }: { onRegister: (emp: Employee) => void 
         <CardContent className="p-10 space-y-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField 
-                control={form.control} 
-                name="name" 
+              <FormField
+                control={form.control}
+                name="name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-[11px] font-black uppercase text-slate-500 ml-1">Full Name</FormLabel>
                     <FormControl>
-                      <Input className="h-12 rounded-2xl bg-slate-50" placeholder="e.g. Shekh Aslam" {...field} />
+                      <Input className="h-12 rounded-2xl bg-slate-50" placeholder="e.g. Jacob Jeffery" {...field} />
                     </FormControl>
                     <FormMessage className="text-[9px] font-bold text-red-600" />
                   </FormItem>
-                )} 
+                )}
               />
               <div className="grid grid-cols-2 gap-4">
-                <FormField 
-                  control={form.control} 
-                  name="officeId" 
+                <FormField
+                  control={form.control}
+                  name="officeId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[11px] font-black uppercase text-slate-500 ml-1">Office ID (8 Digits)</FormLabel>
                       <FormControl>
-                        <Input className="h-12 rounded-2xl bg-slate-50" maxLength={8} placeholder="e.g. 31670001" {...field} />
+                        <Input className="h-12 rounded-2xl bg-slate-50" maxLength={8} placeholder="e.g. APT2.0 Office ID-31670001" {...field} />
                       </FormControl>
                       <FormMessage className="text-[9px] font-bold text-red-600" />
                     </FormItem>
-                  )} 
+                  )}
                 />
-                <FormField 
-                  control={form.control} 
-                  name="pincode" 
+                <FormField
+                  control={form.control}
+                  name="pincode"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[11px] font-black uppercase text-slate-500 ml-1">Pincode (6 Digits)</FormLabel>
                       <FormControl>
-                        <Input className="h-12 rounded-2xl bg-slate-50" maxLength={6} placeholder="e.g. 282001" {...field} />
+                        <Input className="h-12 rounded-2xl bg-slate-50" maxLength={6} placeholder="e.g. AGRA-282001" {...field} />
                       </FormControl>
                       <FormMessage className="text-[9px] font-bold text-red-600" />
                     </FormItem>
-                  )} 
+                  )}
                 />
               </div>
-              <FormField 
-                control={form.control} 
-                name="employeeId" 
+              <FormField
+                control={form.control}
+                name="employeeId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-[11px] font-black uppercase text-slate-500 ml-1">Employee ID</FormLabel>
                     <FormControl>
-                      <Input className="h-12 rounded-2xl bg-slate-50" placeholder="e.g. DOP10292009" {...field} />
+                      <Input className="h-12 rounded-2xl bg-slate-50" placeholder="e.g. 10202122" {...field} />
                     </FormControl>
                   </FormItem>
-                )} 
+                )}
               />
-              <FormField 
-                control={form.control} 
-                name="officeName" 
+              <FormField
+                control={form.control}
+                name="officeName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-[11px] font-black uppercase text-slate-500 ml-1">Office Name</FormLabel>
                     <FormControl>
-                      <Input className="h-12 rounded-2xl bg-slate-50" placeholder="e.g. NSH Agra" {...field} />
+                      <Input className="h-12 rounded-2xl bg-slate-50" placeholder="e.g. SRO/HRO/Divisional Office" {...field} />
                     </FormControl>
                   </FormItem>
-                )} 
+                )}
               />
               <Button type="submit" className="w-full h-14 bg-[#D41217] hover:bg-red-700 text-white font-black rounded-2xl text-base uppercase tracking-widest shadow-lg mt-2 font-display transition-all active:scale-95">
                 Start Working
@@ -162,11 +162,46 @@ function RegistrationForm({ onRegister }: { onRegister: (emp: Employee) => void 
 function Router() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const saved = localStorage.getItem("active_employee");
-    if (saved) setEmployee(JSON.parse(saved));
-    setIsInitializing(false);
+    const electron = (window as any).require('electron');
+    
+    // 1. Listen for Google Auth Success
+    const onAuthSuccess = (_event: any, user: any) => {
+      console.log("📨 [Global] Received Auth Success for:", user.email);
+      setUserEmail(prev => {
+        if (prev === user.email) return prev;
+        toast({ title: "Authenticated", description: `Signed in as ${user.email}`, variant: "default" });
+        return user.email;
+      });
+    };
+    electron.ipcRenderer.on('google-auth-success', onAuthSuccess);
+
+    // 2. Initial Setup: Load local session and path
+    const initApp = async () => {
+      try {
+        const savedEmp = localStorage.getItem("active_employee");
+        if (savedEmp) setEmployee(JSON.parse(savedEmp));
+
+        console.log("🔍 Checking global session...");
+        const session = await electron.ipcRenderer.invoke('load-session');
+        if (session.success && session.email) {
+          console.log("✅ Global session found for:", session.email);
+          setUserEmail(session.email);
+        }
+      } catch (e) {
+        console.log("Running in standard browser mode");
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+    initApp();
+
+    return () => {
+      electron.ipcRenderer.removeListener('google-auth-success', onAuthSuccess);
+    };
   }, []);
 
   const handleRegister = (emp: Employee) => {
@@ -182,101 +217,112 @@ function Router() {
   };
 
   if (isInitializing) return null;
-  if (!employee) return <RegistrationForm onRegister={handleRegister} />;
 
   return (
     <div className="min-h-screen flex bg-white font-display">
-      
-      {/* 🛠️ STEP 1: Sidebar left side mein set kiya */}
-      <Sidebar /> 
+      <Switch>
+        {/* ✅ PUBLIC ROUTE (No Login Required) */}
+        <Route path="/public-report" component={PublicReport} />
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b-2 border-slate-50 sticky top-0 z-50">
-          <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-            <div className="flex items-center gap-5">
-              <img src="/assets/india-post-logo.png" alt="DOP" className="h-10 w-auto" />
-              <div className="h-10 w-px bg-slate-200 hidden sm:block"></div>
-              <h1 className="font-black text-2xl text-[#D41217] tracking-tighter uppercase hidden sm:block">DOP ASSETS</h1>
-            </div>
+        {/* 🔐 PRIVATE ROUTES (Login Required) */}
+        <Route>
+          {!employee ? (
+            <RegistrationForm onRegister={handleRegister} />
+          ) : (
+            <div className="flex w-full">
+              <Sidebar />
+              <div className="flex-1 flex flex-col min-w-0">
+                <header className="bg-white border-b-2 border-slate-50 sticky top-0 z-50">
+                  {/* ... Header Content ... */}
+                  <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+                    <div className="flex items-center gap-5">
+                      <img src="/assets/india-post-logo.png" alt="DOP" className="h-10 w-auto" />
+                      <div className="h-10 w-px bg-slate-200 hidden sm:block"></div>
+                      <h1 className="font-black text-2xl text-[#D41217] tracking-tighter uppercase hidden sm:block">DOP ASSETS</h1>
+                    </div>
 
-            <div className="flex items-center gap-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-3 bg-slate-50 hover:bg-red-50 p-1.5 pr-4 rounded-2xl border-2 border-slate-100 transition-all group shadow-sm">
-                    <Avatar className="h-10 w-10 border-2 border-white">
-                      <AvatarFallback className="bg-[#D41217] text-white font-black text-xs uppercase">
-                        {employee.name.split(' ').map(n => n[0]).join('').slice(0, 2) || "SA"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="text-left hidden md:block">
-                      <p className="text-xs font-black text-slate-900 uppercase leading-none">{employee.name}</p>
-                      <p className="text-[10px] text-red-600 font-bold uppercase mt-1 tracking-tighter">View Profile</p>
-                    </div>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-80 bg-white rounded-[2rem] shadow-2xl p-6 border-slate-100" align="end">
-                  <DropdownMenuLabel className="mb-4 p-0">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-black text-slate-900 uppercase">{employee.name}</p>
-                      <div className="flex items-center gap-2 text-slate-400">
-                        <UserCircle2 className="w-3.5 h-3.5" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest">EMP ID: {employee.employeeId}</p>
-                      </div>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-slate-50 mb-4" />
-                  <div className="space-y-4">
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Office Location</p>
-                      </div>
-                      <p className="text-xs font-bold text-slate-700 uppercase leading-relaxed mb-2">{employee.officeName}</p>
-                      <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 text-slate-500">
-                         <MapPin className="w-3.5 h-3.5 text-red-500" />
-                         <p className="text-[11px] font-black uppercase tracking-tight font-display">Pincode: <span className="text-slate-900">{employee.pincode}</span></p>
-                      </div>
-                    </div>
-                    <div className="bg-red-50 p-4 rounded-2xl border border-red-100 shadow-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <ShieldCheck className="w-4 h-4 text-red-600" />
-                        <p className="text-[10px] font-black text-red-600 uppercase tracking-tighter">Verified Office ID</p>
-                      </div>
-                      <div className="bg-white p-3 rounded-xl border border-red-200 shadow-inner">
-                        <p className="text-[14px] font-mono font-black text-red-700 tracking-widest break-all leading-tight text-center uppercase">
-                          {String(employee.officeId)}_{String(employee.pincode)}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="flex items-center gap-3 bg-slate-50 hover:bg-red-50 p-1.5 pr-4 rounded-2xl border-2 border-slate-100 transition-all group shadow-sm">
+                            <Avatar className="h-10 w-10 border-2 border-white">
+                              <AvatarFallback className="bg-[#D41217] text-white font-black text-xs uppercase">
+                                {employee.name.split(' ').map(n => n[0]).join('').slice(0, 2) || "SA"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="text-left hidden md:block">
+                              <p className="text-xs font-black text-slate-900 uppercase leading-none">{employee.name}</p>
+                              <p className="text-[10px] text-red-600 font-bold uppercase mt-1 tracking-tighter">View Profile</p>
+                            </div>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-80 bg-white rounded-[2rem] shadow-2xl p-6 border-slate-100" align="end">
+                          <DropdownMenuLabel className="mb-4 p-0">
+                            <div className="flex flex-col space-y-1">
+                              <p className="text-sm font-black text-slate-900 uppercase">{employee.name}</p>
+                              <div className="flex items-center gap-2 text-slate-400">
+                                <UserCircle2 className="w-3.5 h-3.5" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest">EMP ID: {employee.employeeId}</p>
+                              </div>
+                            </div>
+                          </DropdownMenuLabel>
+                          <DropdownMenuSeparator className="bg-slate-50 mb-4" />
+                          <div className="space-y-4">
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Office Location</p>
+                              </div>
+                              <p className="text-xs font-bold text-slate-700 uppercase leading-relaxed mb-2">{employee.officeName}</p>
+                              <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 text-slate-500">
+                                <MapPin className="w-3.5 h-3.5 text-red-500" />
+                                <p className="text-[11px] font-black uppercase tracking-tight font-display">Pincode: <span className="text-slate-900">{employee.pincode}</span></p>
+                              </div>
+                            </div>
+                            <div className="bg-red-50 p-4 rounded-2xl border border-red-100 shadow-sm">
+                              <div className="flex items-center gap-2 mb-2">
+                                <ShieldCheck className="w-4 h-4 text-red-600" />
+                                <p className="text-[10px] font-black text-red-600 uppercase tracking-tighter">Verified Office ID</p>
+                              </div>
+                              <div className="bg-white p-3 rounded-xl border border-red-200 shadow-inner">
+                                <p className="text-[14px] font-mono font-black text-red-700 tracking-widest break-all leading-tight text-center uppercase">
+                                  {String(employee.officeId)}_{String(employee.pincode)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <Button onClick={handleLogout} variant="ghost" className="h-12 px-5 gap-2 text-slate-500 hover:bg-red-50 hover:text-red-600 border border-slate-100 hover:border-red-100 transition-all font-black uppercase text-[10px] rounded-2xl">
+                        <LogOut className="w-4 h-4" /><span className="hidden sm:inline">Logout</span>
+                      </Button>
                     </div>
                   </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </header>
 
-              <Button onClick={handleLogout} variant="ghost" className="h-12 px-5 gap-2 text-slate-500 hover:bg-red-50 hover:text-red-600 border border-slate-100 hover:border-red-100 transition-all font-black uppercase text-[10px] rounded-2xl">
-                <LogOut className="w-4 h-4" /><span className="hidden sm:inline">Logout</span>
-              </Button>
+                <main className="flex-1 overflow-auto bg-slate-50/20">
+                  <Switch>
+                    <Route path="/">
+                      <Dashboard userEmail={userEmail} setUserEmail={setUserEmail} />
+                    </Route>
+                    <Route path="/qr-management" component={QRManagement} />
+                    <Route path="/inventory" component={InventoryList} />
+                    <Route path="/create" component={EquipmentForm} />
+                    <Route path="/equipment/:id" component={EquipmentDetail} />
+                    <Route path="/equipment/:id/edit" component={EquipmentForm} />
+                    <Route component={NotFound} />
+                  </Switch>
+                </main>
+
+                <footer className="py-4 text-center border-t bg-white text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                  App developed by Shekh Aslam, RMS X DN Jhansi
+                </footer>
+              </div>
             </div>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-auto bg-slate-50/20">
-          <Switch>
-  <Route path="/" component={Dashboard} />
-  {/* ✅ Is line ko add karne se Inventory Records chalne lagega */}
-    <Route path="/qr-management" component={QRManagement} /> 
-            <Route path="/inventory" component={InventoryList} />
-            <Route path="/create" component={EquipmentForm} />
-            <Route path="/equipment/:id" component={EquipmentDetail} />
-            <Route path="/equipment/:id/edit" component={EquipmentForm} />
-<Route path="/publicreport" component={PublicReport} />
-            <Route component={NotFound} />
-          </Switch>
-        </main>
-        
-        <footer className="py-4 text-center border-t bg-white text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-          App developed by Shekh Aslam, RMS X DN Jhansi
-        </footer>
-      </div>
+          )}
+        </Route>
+      </Switch>
     </div>
   );
 }

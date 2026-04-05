@@ -21,72 +21,6 @@ export default function Dashboard() {
   const [selectedOffices, setSelectedOffices] = useState<string[]>([]);
   const [selectedEquipmentTypes, setSelectedEquipmentTypes] = useState<string[]>([]);
   
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [showSetup, setShowSetup] = useState(false);
-  const [projectPath, setProjectPath] = useState("C:\\Equipment-History");
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  useEffect(() => {
-    const initApp = async () => {
-      try {
-        const electron = (window as any).require('electron');
-        
-        // ✅ Signal sunne ke liye listener (Backend se login success aane par ye chalega)
-        electron.ipcRenderer.removeAllListeners('auth-success');
-        electron.ipcRenderer.on('auth-success', (_event: any, email: string) => {
-          console.log("Login Success Signal Received for:", email);
-          setUserEmail(email);
-          setIsLoggingIn(false); 
-          setShowSetup(false);   
-        });
-
-        const defaultPath = await electron.ipcRenderer.invoke('get-app-path');
-        if (defaultPath) setProjectPath(defaultPath);
-      } catch (e) { 
-        console.log("Running in standard browser mode"); 
-      }
-    };
-    initApp();
-
-    const handleStatus = () => setIsOnline(navigator.onLine);
-    window.addEventListener('online', handleStatus);
-    window.addEventListener('offline', handleStatus);
-    refetch();
-    return () => {
-      window.removeEventListener('online', handleStatus);
-      window.removeEventListener('offline', handleStatus);
-    };
-  }, [refetch]);
-
-  const handleGoogleLogin = async () => {
-    try {
-        const electron = (window as any).require('electron');
-        setIsLoggingIn(true);
-        // Backend handle karega pura login process
-        await electron.ipcRenderer.invoke('google-signin');
-    } catch (err) {
-        console.error("Login Error:", err);
-        setIsLoggingIn(false);
-    }
-  };
-
-  // ✅ Logout Logic jo backend (`main.cjs`) se connect hogi
-  const handleLogout = async () => {
-    try {
-      const electron = (window as any).require('electron');
-      // Backend ko 'google-logout' ka signal bhejenge
-      const result = await electron.ipcRenderer.invoke('google-logout');
-      if (result.success) {
-        setUserEmail(null);
-        setShowSetup(false);
-        alert("Signed out successfully. You can now login with another ID.");
-      }
-    } catch (err) {
-      alert("Error during logout. Please ensure backend is updated.");
-    }
-  };
-
   // Filter Logic: Unique Office Names
   const uniqueOffices = useMemo(() => {
     if (!equipmentList) return [];
@@ -125,7 +59,7 @@ export default function Dashboard() {
       "Pincode": eq.pincode,
       "Equipment Name": eq.equipmentName,
       "Model Number": eq.modelNumber,
-      "Installed At": eq.installLocation || eq.installedAt || "N/A", 
+      "Installed At": eq.installedAt || "N/A", 
       "Serial Number": eq.serialNumber,
       "Manufacturing Date": eq.manufacturingDate,
       "Installation Date": eq.installationDate,
@@ -143,27 +77,12 @@ export default function Dashboard() {
     link.click();
   };
 
-  const isCloudActive = isOnline && userEmail;
   const hasActiveFilters = search !== "" || selectedOffices.length > 0 || selectedEquipmentTypes.length > 0;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] pb-20 font-sans relative text-left">
       <div className="container mx-auto max-w-7xl px-4 py-8 md:py-10">
         <header className="flex flex-col items-center mb-10 relative">
-          <div 
-            onClick={() => setShowSetup(true)}
-            className={`absolute right-0 top-0 cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
-              isCloudActive ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
-            }`}
-          >
-            <div className="relative flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isCloudActive ? 'bg-green-400' : 'bg-red-400'}`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isCloudActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-tight">
-              {isCloudActive ? "Cloud Active" : "Offline Mode"}
-            </span>
-          </div>
 
           <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 mb-3">
             <img src="/assets/india-post-logo.png" alt="India Post" className="h-16 w-auto object-contain" />
@@ -220,56 +139,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {showSetup && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl max-w-md w-full p-8 border animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-start mb-6">
-              <div className="bg-red-50 p-3 rounded-2xl text-red-600"><Settings2 className="w-6 h-6" /></div>
-              <button onClick={() => setShowSetup(false)}><X className="w-5 h-5 text-slate-400" /></button>
-            </div>
-            
-            <h3 className="text-xl font-black text-slate-900 uppercase mb-4 text-center tracking-tight">Cloud Sync Setup</h3>
-            
-            {!userEmail ? (
-              <div className="space-y-4">
-                {!isLoggingIn ? (
-                  <>
-                    <p className="text-slate-500 text-sm font-medium mb-4 text-center italic text-[11px]">Automatic Backup to Google Drive</p>
-                    <Button onClick={handleGoogleLogin} className="w-full h-12 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm">
-                      <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="G" />
-                      Sign in with Google
-                    </Button>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center py-10 gap-4 animate-pulse">
-                    <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-                    <p className="text-[10px] font-black text-blue-600 uppercase text-center tracking-widest">Waiting for Browser Login...</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center space-y-4 animate-in fade-in duration-500">
-                <div className="bg-green-50 p-4 rounded-2xl border border-green-100 flex flex-col items-center">
-                  <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse mb-2"></div>
-                  <p className="text-[10px] font-black text-green-600 uppercase tracking-widest">Active Account</p>
-                  <p className="font-bold text-slate-700 text-lg">{userEmail}</p>
-                </div>
-                {/* ✅ Added Sign Out Button for Switching IDs */}
-                <Button 
-                  onClick={handleLogout} 
-                  variant="outline" 
-                  className="w-full text-red-500 border-red-200 hover:bg-red-50 font-bold"
-                >
-                  Sign Out / Switch Account
-                </Button>
-                <p className="text-[10px] text-slate-400 font-bold italic">Your data is being synced automatically.</p>
-              </div>
-            )}
-            
-            <Button onClick={() => setShowSetup(false)} className="w-full mt-6 h-10 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 uppercase text-[10px] tracking-widest">Close</Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

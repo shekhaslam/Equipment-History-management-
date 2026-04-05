@@ -1,7 +1,8 @@
 import { EquipmentWithRepairs } from "@shared/schema";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Wrench, Activity, Download, Power } from "lucide-react";
+import { MapPin, Wrench, Activity, Download, Power, CheckCircle2, QrCode } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { format, isValid } from "date-fns";
 import { useMemo } from "react"; // useMemo को जोड़ा गया
@@ -23,12 +24,12 @@ export function EquipmentCard({ equipment }: { equipment: EquipmentWithRepairs }
   const lastUpdateDisplay = useMemo(() => {
     // 1. अगर Repairs मौजूद हैं, तो सबसे ताज़ा मरम्मत की तारीख निकालें
     if (equipment.repairs && equipment.repairs.length > 0) {
-      const dates = equipment.repairs
-        .map(r => new Date(r.date))
-        .filter(d => isValid(d));
+      const dates = (equipment.repairs as any[])
+        .map((r: any) => new Date(r.date))
+        .filter((d: any) => isValid(d));
       
       if (dates.length > 0) {
-        const latest = new Date(Math.max(...dates.map(d => d.getTime())));
+        const latest = new Date(Math.max(...dates.map((d: any) => d.getTime())));
         return `Updated: ${format(latest, "MMM yyyy")}`; // Ex: Updated: Feb 2026
       }
     }
@@ -83,7 +84,7 @@ export function EquipmentCard({ equipment }: { equipment: EquipmentWithRepairs }
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-500" />
               <p className="text-xs font-bold text-slate-600 truncate">
-                {equipment.installLocation || equipment.installedAt || "Main Office"}
+                {equipment.installedAt || "Main Office"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -99,6 +100,16 @@ export function EquipmentCard({ equipment }: { equipment: EquipmentWithRepairs }
             {lastUpdateDisplay}
           </span>
           <div className="flex gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              asChild
+              className={`h-7 px-2 text-xs font-bold ${isCondemned ? 'text-red-400' : 'text-slate-400 hover:text-primary'}`}
+            >
+              <Link href={`/qr-management?search=${equipment.serialNumber}&print=true`}>
+                <QrCode className="w-4 h-4" />
+              </Link>
+            </Button>
             <Button 
               variant="ghost" 
               size="sm" 

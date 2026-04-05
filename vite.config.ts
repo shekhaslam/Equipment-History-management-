@@ -9,10 +9,7 @@ const __dirname = path.dirname(__filename);
 export default defineConfig({
   plugins: [react()],
   root: path.resolve(__dirname, "client"),
-  
-  // ✅ Ye line ensure karegi ki assets hamesha root se load hon, folder se nahi
-  base: "/", 
-
+  // Isse Vite baar-baar reload nahi hoga
   optimizeDeps: {
     entries: ["./src/main.tsx"],
     include: ["react", "react-dom", "wouter", "@tanstack/react-query"],
@@ -22,10 +19,5 @@ export default defineConfig({
       "@": path.resolve(__dirname, "client/src"),
       "@shared": path.resolve(__dirname, "shared"),
     },
-  },
-  // ✅ Isse build aur routing stable ho jati hai
-  build: {
-    outDir: path.resolve(__dirname, "dist/public"),
-    emptyOutDir: true,
   },
 });
