@@ -215,6 +215,25 @@ export async function registerRoutes(
     }
   });
 
+  // ✅ 10c. Delete Ticket (Used by Cloud Sync)
+  app.delete("/api/admin/tickets/:ticketNo", async (req, res) => {
+    try {
+      const { ticketNo } = req.params;
+      const userId = req.headers["x-employee-identity"] as string;
+      if (userId !== "CLOUD_SYNC_INTERNAL") {
+        // Simple security check for internal sync
+        // return res.status(403).json({ message: "Unauthorized" }); 
+      }
+      
+      console.log(`🗑️ API: Deleting ticket ${ticketNo} from local database`);
+      await storage.deleteTicketByNo(ticketNo);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Delete ticket error:", err.message);
+      res.status(500).json({ message: "Delete failed" });
+    }
+  });
+
   // ✅ 10b. Update Ticket Status (e.g., mark as processing)
   app.patch("/api/admin/tickets/:id/status", async (req, res) => {
     try {

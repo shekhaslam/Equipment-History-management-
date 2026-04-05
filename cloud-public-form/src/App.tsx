@@ -227,8 +227,9 @@ function App() {
         })
         .then(data => {
             if (data.success) {
-            console.log("✅ Equipment found:", data.data.name);
-            setEquipment(data.data);
+            setEquipment(data.equipment);
+            // Use Name as fallback if Category is missing
+            setSelectedAssetType(data.equipment.category || data.equipment.name || "Equipment");
             setError(null);
             }
         })

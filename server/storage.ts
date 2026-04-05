@@ -244,6 +244,11 @@ export const storage = new (class SqliteStorage {
     `).all(userId);
   }
 
+  async deleteTicketByNo(ticketNo: string) {
+    sqlite.prepare("DELETE FROM repair_requests WHERE ticketNo = ?").run(ticketNo);
+    return true;
+  }
+
   async resolveTicket(ticketId: number, resolution: { date: string, nature: string, amount: string, invoiceNo?: string, vendorName?: string, remarks?: string }) {
     const ticket = sqlite.prepare('SELECT * FROM repair_requests WHERE id = ?').get(ticketId) as any;
     if (!ticket) return false;
