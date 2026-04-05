@@ -318,10 +318,24 @@ function createWindow() {
         const delRes = await fetch(`${CLOUD_BRIDGE_URL}?action=get_all_tickets`);
         const delData = await delRes.json();
         if (delData.success && Array.isArray(delData.tickets)) {
-            await fetch("http://localhost:5001/api/admin/tickets/sync-deletions", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ validTickets: delData.tickets })
+            const validTicketNos = new Set(delData.tickets);
+            console.log(`🔍 Cloud has ${validTicketNos.size} active/synced tickets. Checking for orphans...`);
+            
+            const localTicketsRes = await fetch("http://localhost:5001/api/admin/tickets");
+            const tickets = await localTicketsRes.json();
+            
+            tickets.forEach(async (ticket) => {
+              if (!validTicketNos.has(ticket.ticketNo)) {
+                console.log(`🗑️ MATCH FOUND: Ticket ${ticket.ticketNo} is missing in Cloud. Deleting locally...`);
+                try {
+                  await fetch(`http://localhost:5001/api/admin/tickets/${ticket.ticketNo}`, {
+                    method: "DELETE",
+                    headers: { "x-employee-identity": "CLOUD_SYNC_INTERNAL" }
+                  });
+                } catch (err) {
+                  console.error(`❌ Failed to delete orphaned ticket ${ticket.ticketNo}:`, err.message);
+                }
+              }
             });
         }
       } catch (err) {

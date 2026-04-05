@@ -91,15 +91,15 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify({ success: true, reports: unsynced })).setMimeType(ContentService.MimeType.JSON);
   }
 
-  // New Action for Deletion Sync
+  // New Action for Deletion Sync: Returns ALL non-resolved tickets so local app can detect deletions
   if (action === "get_all_tickets") {
-    const sheet = ss.getSheetByName("REPORTS");
     const data = sheet.getDataRange().getValues();
-    const tickets = [];
+    let tickets = [];
     for (let i = 1; i < data.length; i++) {
-        const status = data[i][9];
-        if (status === "PENDING" || status === "PROCESSING") {
-            tickets.push(data[i][1].toString());
+        const status = data[i][9]; // Column J (SyncStatus)
+        // If it exists in any non-final state, consider it "Active" in cloud
+        if (status === "PENDING" || status === "PROCESSING" || status === "SYCHED" || status === "REPORTER_SYNC_PENDING") {
+            tickets.push(data[i][1].toString()); // Ticket Number
         }
     }
     return ContentService.createTextOutput(JSON.stringify({ success: true, tickets })).setMimeType(ContentService.MimeType.JSON);
@@ -169,7 +169,11 @@ function doPost(e) {
     
     const ticketNo = generateShortID();
     const faultDomain = body.faultDomain || body.assetType || body.domain || "";
-    const combinedFault = faultDomain ? `${faultDomain}: ${body.issueType}` : body.issueType;
+    // Robustly combine Domain: Issue to ensure it shows up in Columns
+    let combinedFault = body.issueType;
+    if (faultDomain && !body.issueType.includes(faultDomain)) {
+        combinedFault = `${faultDomain}: ${body.issueType}`;
+    }
     
     sheet.appendRow([
       Date.now(), // Unique Record ID

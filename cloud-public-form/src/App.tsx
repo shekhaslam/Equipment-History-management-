@@ -253,15 +253,21 @@ function App() {
 
     setIsSubmitting(true);
     try {
+      // Combine category and issue type before sending for maximum visibility in sheets
+      const issueWithCategory = selectedAssetType && !formData.issueType.includes(selectedAssetType)
+        ? `${selectedAssetType}: ${formData.issueType}`
+        : formData.issueType;
+
       await fetch(GAS_URL, {
         method: "POST",
         mode: "no-cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...formData,
+          issueType: issueWithCategory,
           action: "submit_report",
           equipmentId: Number(equipmentId),
-          faultDomain: selectedAssetType,
-          ...formData
+          faultDomain: selectedAssetType
         })
       });
 
