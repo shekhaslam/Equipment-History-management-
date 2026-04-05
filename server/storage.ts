@@ -243,6 +243,7 @@ export const storage = new (class SqliteStorage {
       AND (e.userId = ? OR e.userId IS NULL)
       ORDER BY r.id DESC
     `).all(userId);
+  }
 
   async deleteTicketByNo(ticketNo: string) {
     sqlite.prepare("DELETE FROM repair_requests WHERE ticketNo = ?").run(ticketNo);
