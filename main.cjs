@@ -321,7 +321,9 @@ function createWindow() {
             const validTicketNos = new Set(delData.tickets);
             console.log(`🔍 Cloud has ${validTicketNos.size} active/synced tickets. Checking for orphans...`);
             
-            const localTicketsRes = await fetch("http://localhost:5001/api/admin/tickets");
+            const localTicketsRes = await fetch("http://localhost:5001/api/admin/tickets", {
+                headers: { "x-employee-identity": "CLOUD_SYNC_INTERNAL" }
+            });
             const tickets = await localTicketsRes.json();
             
             tickets.forEach(async (ticket) => {

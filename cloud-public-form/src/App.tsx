@@ -227,9 +227,11 @@ function App() {
         })
         .then(data => {
             if (data.success) {
-            setEquipment(data.equipment);
+            // Correctly use data.data from Google Script response
+            const equip = data.data;
+            setEquipment(equip);
             // Use Name as fallback if Category is missing
-            setSelectedAssetType(data.equipment.category || data.equipment.name || "Equipment");
+            setSelectedAssetType(equip.category || equip.name || "Equipment");
             setError(null);
             }
         })
