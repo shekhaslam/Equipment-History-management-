@@ -84,7 +84,8 @@ export const generateProPDF = (equipment: any, isPreview: boolean = false) => {
   doc.setFontSize(10).setTextColor(0).text("Office Seal & Date", 165, footerY + 6, { align: "center" });
 
   if (isPreview) {
-    return doc.output('bloburl');
+    const blobUrl = doc.output('bloburl');
+    window.open(blobUrl, '_blank');
   } else {
     doc.save(`${equipment.serialNumber}_Report.pdf`);
   }

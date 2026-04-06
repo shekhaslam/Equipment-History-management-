@@ -54,7 +54,9 @@ export default function EquipmentDetail() {
                 nature: resolveData.nature,
                 vendorName: resolveData.vendorName,
                 remarks: resolveData.remarks,
-                date: resolveData.date
+                date: resolveData.date,
+                invoiceNo: resolveData.invoiceNo,
+                amount: resolveData.amount
             });
             if (!cloudResult || !cloudResult.success) {
                 console.warn("⚠️ Google Sheet Update Failed:", cloudResult?.error);

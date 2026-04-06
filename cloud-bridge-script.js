@@ -23,8 +23,8 @@ function setup() {
   let repSheet = ss.getSheetByName("REPORTS");
   if (!repSheet) {
     repSheet = ss.insertSheet("REPORTS");
-    repSheet.appendRow(["ID", "TicketNo", "EquipmentID", "Reporter", "Branch", "Mobile", "Fault", "Details", "Timestamp", "SyncStatus", "ResDate", "ResNature", "ResVendor", "ResRemarks"]);
-    repSheet.getRange("A1:N1").setFontWeight("bold").setBackground("#D41217").setFontColor("white");
+    repSheet.appendRow(["ID", "TicketNo", "EquipmentID", "Reporter", "Branch", "Mobile", "Fault", "Details", "Timestamp", "SyncStatus", "ResDate", "ResNature", "ResVendor", "ResRemarks", "InvoiceNo", "Amount"]);
+    repSheet.getRange("A1:P1").setFontWeight("bold").setBackground("#D41217").setFontColor("white");
   }
 }
 
@@ -243,6 +243,8 @@ function doPost(e) {
                 if (body.nature) sheet.getRange(i + 1, 12).setValue(body.nature);
                 if (body.vendorName) sheet.getRange(i + 1, 13).setValue(body.vendorName);
                 if (body.remarks) sheet.getRange(i + 1, 14).setValue(body.remarks);
+                if (body.invoiceNo) sheet.getRange(i + 1, 15).setValue(body.invoiceNo);
+                if (body.amount) sheet.getRange(i + 1, 16).setValue(body.amount);
             }
             
             return ContentService.createTextOutput(JSON.stringify({ 
