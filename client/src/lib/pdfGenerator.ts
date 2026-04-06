@@ -12,7 +12,7 @@ export const generateProPDF = (equipment: any, isPreview: boolean = false) => {
     doc.addImage("/assets/india-post-logo.png", 'PNG', 15, 10, 25, 15); 
   } catch (e) { console.error("Logo missing"); }
 
-  doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(212, 18, 23); 
+  doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(0); 
   doc.text("DEPARTMENT OF POSTS", 115, 18, { align: "center" });
   doc.setFontSize(14).setTextColor(0).text("Equipment History Sheet (Official)", 115, 26, { align: "center" });
 
