@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Sparkles, Send, FileText, Trash2, History, Languages, Paperclip, X, Download, Eye } from "lucide-react";
+import { Loader2, Sparkles, Send, FileText, Trash2, History, Languages, Paperclip, X, Download, Eye, Printer, Terminal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateCoveringLetterPDF } from "@/lib/pdfGenerator";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -22,6 +22,7 @@ export default function CoveringLetter() {
   const [roughIdea, setRoughIdea] = useState("");
   const [language, setLanguage] = useState<"English" | "Hindi">("English");
   const [isDrafting, setIsDrafting] = useState(false);
+  const [isRefreshingPreview, setIsRefreshingPreview] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -34,7 +35,7 @@ export default function CoveringLetter() {
     defaultValues: {
       header: localStorage.getItem("letter_header") || "DEPARTMENT OF POSTS, INDIA\nOffice of the Manager Agra NSH, RMS X Division Agra-282001",
       letterNo: "",
-      date: new Date().toISOString().split('T').sort().reverse().join('-'), // YYYY-MM-DD
+      date: new Date().toISOString().split('T')[0],
       recipient: "",
       sender: localStorage.getItem("letter_sender_name") || "",
       designation: localStorage.getItem("letter_sender_designation") || "Manager\nNational Sorting Hub\nAgra-282001",
@@ -55,7 +56,6 @@ export default function CoveringLetter() {
   }, []);
 
   const formData = form.watch();
-  const debouncedFormData = useDebounce(formData, 1500);
 
   // Auto-save sticky fields
   useEffect(() => {
@@ -64,25 +64,20 @@ export default function CoveringLetter() {
     localStorage.setItem("letter_sender_designation", formData.designation || "");
   }, [formData.header, formData.sender, formData.designation]);
 
-  // Update Live Preview (with Cleanup to fix blinking)
-  useEffect(() => {
-    let currentUrl: string | null = null;
-    
-    const updatePreview = async () => {
-      const url = await generateCoveringLetterPDF(debouncedFormData, true);
+  const updatePreviewManually = async () => {
+    setIsRefreshingPreview(true);
+    try {
+      const url = await generateCoveringLetterPDF(form.getValues(), true);
       if (url) {
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(url as string);
-        currentUrl = url as string;
       }
-    };
-    
-    updatePreview();
-
-    return () => {
-      if (currentUrl) URL.revokeObjectURL(currentUrl);
-    };
-  }, [debouncedFormData]);
+    } catch (e) {
+      toast({ title: "Preview Error", description: "PDF generate nahi ho saka.", variant: "destructive" });
+    } finally {
+      setIsRefreshingPreview(false);
+    }
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -122,9 +117,14 @@ export default function CoveringLetter() {
         sender: form.getValues("sender")
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "AI Drafting failed");
+
       form.setValue("subject", data.subject);
       form.setValue("body", data.body);
-      toast({ title: "AI Draft Ready", description: "Aap niche ke 'Edit Box' mein badlav kar sakte hain." });
+      toast({ title: "AI Draft Ready", description: "Aap 'Edit Box' mein badlav kar sakte hain." });
+      
+      // Update preview immediately after AI draft
+      updatePreviewManually();
     } catch (err: any) {
       toast({ title: "AI Offline/Error", description: err.message || "Connection failure", variant: "destructive" });
     } finally {
@@ -139,8 +139,8 @@ export default function CoveringLetter() {
     }
   };
 
-  const handleFullPrint = async () => {
-    const data = form.getValues();
+  const handleFullPrint = async (directData?: any) => {
+    const data = directData || form.getValues();
     const attachmentData = await Promise.all(attachments.map(async (file) => {
       return new Promise<{ name: string, type: string, data: string }>((resolve) => {
         const reader = new FileReader();
@@ -154,7 +154,11 @@ export default function CoveringLetter() {
     }));
 
     await generateCoveringLetterPDF({ ...data, attachmentData }, false);
-    saveMutation.mutate({ ...data, roughIdea, language, attachments: JSON.stringify(attachmentData.map(a => a.name)) });
+    if (!directData) {
+      saveMutation.mutate({ ...data, roughIdea, language, attachments: JSON.stringify(attachmentData.map(a => a.name)) });
+    } else {
+       toast({ title: "Printing Historical Letter", description: "Generating PDF from archive..." });
+    }
   };
 
   const loadFromHistory = (letter: any) => {
@@ -162,6 +166,7 @@ export default function CoveringLetter() {
     setRoughIdea(letter.roughIdea || "");
     setLanguage(letter.language as any || "English");
     toast({ title: "History Loaded", description: `Letter No ${letter.letterNo} load ho gaya hai.` });
+    updatePreviewManually();
   };
 
   return (
@@ -239,10 +244,15 @@ export default function CoveringLetter() {
                 </div>
 
                 {/* 6. EDIT TOOL BOX (FINAL CONTENT) */}
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-black uppercase text-[#D41217] ml-1 flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> Final Letter Body (Edit Box)
-                  </Label>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center px-1">
+                    <Label className="text-[11px] font-black uppercase text-[#D41217] flex items-center gap-2">
+                        <FileText className="w-4 h-4" /> Final Letter Body (Edit Box)
+                    </Label>
+                    <Button variant="outline" size="sm" onClick={updatePreviewManually} disabled={isRefreshingPreview} className="rounded-full h-8 text-[10px] font-black uppercase tracking-widest border-[#D41217] text-[#D41217] hover:bg-red-50">
+                       {isRefreshingPreview ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Eye className="w-3 h-3 mr-2" />} Refresh Live Preview
+                    </Button>
+                  </div>
                   <Textarea {...form.register("body")} className="min-h-[350px] bg-white border-2 border-slate-100 rounded-[2rem] p-8 leading-relaxed font-medium shadow-inner text-base" />
                 </div>
 
@@ -260,8 +270,8 @@ export default function CoveringLetter() {
                   </CardContent>
                 </Card>
 
-                <Button onClick={handleFullPrint} className="w-full h-16 bg-[#D41217] hover:bg-red-700 text-white rounded-[2rem] font-black uppercase tracking-widest text-lg shadow-xl shadow-red-200 transition-all active:scale-95">
-                  <Send className="w-6 h-6 mr-3" /> Save & Export Official PDF
+                <Button onClick={() => handleFullPrint()} className="w-full h-16 bg-[#D41217] hover:bg-red-700 text-white rounded-[2rem] font-black uppercase tracking-widest text-lg shadow-xl shadow-red-200 transition-all active:scale-95">
+                  <Send className="w-6 h-6 mr-3" /> Save & Export Final PDF
                 </Button>
               </CardContent>
             </Card>
@@ -277,16 +287,22 @@ export default function CoveringLetter() {
                   {isLoadingHistory ? (
                       <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-slate-300" /></div>
                   ) : (
-                    <div className="divide-y max-h-[400px] overflow-auto">
+                    <div className="divide-y max-h-[500px] overflow-auto">
                       {letters.map((letter) => (
-                        <div key={letter.id} className="p-4 hover:bg-slate-50 cursor-pointer group flex justify-between items-center" onClick={() => loadFromHistory(letter)}>
+                        <div key={letter.id} className="p-4 hover:bg-slate-50 cursor-pointer group flex items-start justify-between gap-4" onClick={() => loadFromHistory(letter)}>
                            <div className="min-w-0 flex-1">
                               <p className="text-[10px] font-black text-[#D41217] uppercase mb-1">{letter.letterNo || "NO REF"}</p>
-                              <p className="text-sm font-bold text-slate-800 truncate pr-4">{letter.subject || "No Subject"}</p>
+                              <p className="text-sm font-bold text-slate-800 truncate">{letter.subject || "No Subject"}</p>
+                              <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">{letter.date}</p>
                            </div>
-                           <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(letter.id); }}>
-                              <Trash2 className="w-4 h-4" />
-                           </Button>
+                           <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="group-hover:opacity-100 opacity-0 h-8 w-8 text-slate-400 hover:text-green-600 hover:bg-green-50" onClick={(e) => { e.stopPropagation(); handleFullPrint(letter); }}>
+                                 <Printer className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(letter.id); }}>
+                                 <Trash2 className="w-4 h-4" />
+                              </Button>
+                           </div>
                         </div>
                       ))}
                     </div>
@@ -306,19 +322,28 @@ export default function CoveringLetter() {
                     <div>
                        <CardTitle className="text-sm font-black uppercase text-slate-900 leading-none tracking-tight">Official Preview</CardTitle>
                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                          Auto-generating
+                          <div className={`w-1.5 h-1.5 rounded-full ${previewUrl ? 'bg-green-500' : 'bg-slate-300 animate-pulse'}`}></div>
+                          Update at your command
                        </p>
                     </div>
                  </div>
+                 <Button onClick={updatePreviewManually} disabled={isRefreshingPreview} size="sm" className="bg-slate-900 hover:bg-black rounded-xl h-9 px-4 font-black uppercase text-[10px] tracking-widest">
+                    {isRefreshingPreview ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <Eye className="w-3.5 h-3.5 mr-2" />} Refresh Now
+                 </Button>
               </div>
-              <div className="flex-1 bg-slate-100 p-8 overflow-hidden">
+              <div className="flex-1 bg-slate-100 p-8 overflow-hidden flex flex-col items-center justify-center">
                  {previewUrl ? (
                     <iframe src={`${previewUrl}#toolbar=0&navpanes=0&view=FitH`} className="w-full h-full border-none shadow-2xl rounded-sm scale-110 origin-top" title="Live Preview" />
                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-4">
-                       <Loader2 className="w-12 h-12 animate-spin opacity-20" />
-                       <p className="text-[10px] font-black uppercase tracking-[0.3em]">Preparing Preview...</p>
+                    <div className="flex flex-col items-center justify-center text-slate-400 gap-6">
+                       <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border-4 border-slate-50 flex flex-col items-center gap-4 max-w-[280px] text-center">
+                          <Terminal className="w-10 h-10 text-slate-300" />
+                          <p className="text-xs font-black uppercase leading-tight text-slate-500">Live Preview is currently stable</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Type your letter and click "Refresh Now" on the right sidebar to update this window.</p>
+                       </div>
+                       <Button onClick={updatePreviewManually} className="bg-[#D41217] hover:bg-red-700 h-12 rounded-2xl px-8 font-black uppercase text-xs tracking-widest shadow-xl">
+                          Generate Initial Preview
+                       </Button>
                     </div>
                  )}
               </div>

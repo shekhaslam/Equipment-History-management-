@@ -381,11 +381,10 @@ export async function registerRoutes(
   // ✅ 14. AI Drafting Logic (Gemini)
   app.post("/api/ai/draft-letter", async (req, res) => {
     try {
-      const { roughIdea, language, recipient, sender } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
-
       if (!apiKey) {
-        return res.status(400).json({ message: "Gemini API Key missing in server environment (.env)" });
+        console.error("[AI ERROR] GEMINI_API_KEY is missing from environment. Current process.env:", Object.keys(process.env));
+        return res.status(400).json({ message: "Gemini API Key missing in server environment (.env). Restart might be needed." });
       }
 
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
