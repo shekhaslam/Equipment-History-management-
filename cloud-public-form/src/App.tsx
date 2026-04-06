@@ -5,6 +5,7 @@ import {
   History, Search, MapPin, User, Calendar
 } from "lucide-react";
 import { QRCodeCanvas } from 'qrcode.react';
+import html2pdf from 'html2pdf.js';
 import './App.css';
 
 // --- CONFIGURATION ---
@@ -302,9 +303,9 @@ function App() {
           localStorage.setItem("dop_cloud_recent", JSON.stringify(updated));
         } catch (e) {}
 
-        // ✅ AUTO DOWNLOAD PDF (SIMULATED PRINT)
+        // ✅ AUTO DOWNLOAD PDF (Direct Download Trigger)
         setTimeout(() => {
-          window.print();
+          generatePDFForData(enrichedData);
         }, 1500);
       } else {
           throw new Error("Could not retrieve Ticket ID");
@@ -345,9 +346,97 @@ function App() {
     }
   };
 
-  const generatePDFForData = async () => {
-    // Native print is perfectly styled with colors and A4 dimensions via CSS
-    window.print();
+  const generatePDFForData = (dataToPrint?: any) => {
+    const ticket = dataToPrint || ticketData;
+    if (!ticket) return;
+
+    const pdfContent = `
+      <div style="padding: 40px; font-family: 'Inter', sans-serif; color: #1e293b;">
+        <div style="display: flex; align-items: center; border-bottom: 4px solid #D41217; padding-bottom: 20px; margin-bottom: 30px; justify-content: space-between;">
+          <div style="flex: 1;">
+            <h1 style="margin: 0; font-size: 28px; font-weight: 900; text-transform: uppercase; color: #D41217;">India Post</h1>
+            <p style="margin: 2px 0 0; font-size: 10px; color: #64748b; font-weight: 800; letter-spacing: 3px;">OFFICIAL MAINTENANCE AUDIT</p>
+          </div>
+          <div style="text-align: right; min-width: 150px;">
+            <p style="margin: 0; font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Ticket Identification</p>
+            <div style="margin-top: 5px; background: #fff; border: 2px solid #0f172a; border-radius: 10px; padding: 8px 15px;">
+              <span style="font-size: 18px; font-weight: 900; color: #0f172a; font-family: monospace;">${ticket.ticketNo}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 30px;">
+          <h3 style="margin: 0 0 15px; font-size: 10px; font-weight: 900; color: #64748b; letter-spacing: 2px; text-transform: uppercase;">A. ASSET INFORMATION</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+            <div>
+              <p style="font-size: 9px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Equipment Name</p>
+              <p style="font-weight: 800; font-size: 14px; margin: 5px 0; color: #1e293b;">${ticket.equipmentName || (equipment ? equipment.name : "N/A")}</p>
+            </div>
+            <div>
+              <p style="font-size: 9px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Serial Number</p>
+              <p style="font-weight: 900; font-size: 14px; margin: 5px 0; color: #0f172a; font-family: monospace;">${ticket.serialNumber || (equipment ? equipment.sn : "N/A")}</p>
+            </div>
+          </div>
+          <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+             <div>
+              <p style="font-size: 9px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Office / Unit</p>
+              <p style="font-weight: 700; font-size: 13px; margin: 5px 0;">${ticket.officeName || (equipment ? equipment.office : "N/A")}</p>
+            </div>
+             <div>
+              <p style="font-size: 9px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Division</p>
+              <p style="font-weight: 700; font-size: 13px; margin: 5px 0;">${ticket.division || (equipment ? equipment.division : "N/A")}</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="border: 2px solid #0f172a; border-radius: 25px; padding: 30px; margin-bottom: 30px; position: relative; overflow: hidden;">
+          <h3 style="margin: 0 0 20px; font-size: 10px; font-weight: 900; color: #64748b; letter-spacing: 2px; text-transform: uppercase;">B. INCIDENT & REPORTER DETAILS</h3>
+          
+          <div style="margin: 0; padding: 20px 0; border-top: 1px dashed #cbd5e1;">
+            <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+              <tr><td style="padding: 10px 0; color: #64748b; font-weight: 600;">REPORTING OFFICER:</td><td align="right" style="font-weight: 900; color: #0f172a;">${ticket.reporterName}</td></tr>
+              <tr><td style="padding: 10px 0; color: #64748b; font-weight: 600;">SECTION / BRANCH:</td><td align="right" style="font-weight: 800;">${ticket.branchName}</td></tr>
+              <tr><td style="padding: 10px 0; color: #64748b; font-weight: 600;">NATURE OF FAULT:</td><td align="right" style="font-weight: 900; color: #D41217;">${ticket.issueType}</td></tr>
+              <tr><td style="padding: 10px 0; color: #64748b; font-weight: 600;">LOG TIMESTAMP:</td><td align="right" style="font-weight: 800;">${ticket.timestamp}</td></tr>
+            </table>
+          </div>
+
+          <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 15px; padding: 20px; margin-top: 10px;">
+             <p style="font-size: 9px; color: #94a3b8; font-weight: 800; margin: 0 0 10px; text-transform: uppercase;">Description of Problem</p>
+             <p style="font-size: 13px; line-height: 1.6; color: #334155; font-style: italic; margin: 0;">"${ticket.issueDescription}"</p>
+          </div>
+          
+          <p style="font-size: 8px; text-align: center; color: #94a3b8; margin: 30px 0 0; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Verified Digital Record - Authenticated via OTP System</p>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; padding-top: 20px;">
+           <div style="text-align: center;">
+              <p style="margin-bottom: 40px; border-bottom: 2px solid #e2e8f0; width: 120px;"></p>
+              <p style="font-size: 10px; font-weight: 900; margin: 0; color: #64748b;">REPORTER'S SIGNATURE</p>
+           </div>
+           <div style="text-align: center;">
+              <p style="margin-bottom: 40px; border-bottom: 2px solid #e2e8f0; width: 150px;"></p>
+              <p style="font-size: 10px; font-weight: 900; margin: 0; color: #0f172a;">OFFICE SEAL / AUTHORITY</p>
+           </div>
+        </div>
+      </div>
+    `;
+
+    const opt = {
+      margin: 0,
+      filename: `Report_${ticket.ticketNo}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 3, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    
+    // Explicitly target download
+    try {
+      html2pdf().from(pdfContent).set(opt).save();
+    } catch (e) {
+      console.error("Direct download failed:", e);
+      window.print(); // Fallback
+    }
   };
 
   if (isLoading) return (
@@ -675,32 +764,59 @@ function App() {
           ) : (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
               
-              {/* ✅ RECENT REPORTS SECTION (MOBILE RETRIEVAL) */}
+              {/* ✅ OFFICIAL REGISTRY SECTION (RECENT REPORTS) */}
               {(() => {
                 const recent = JSON.parse(localStorage.getItem("dop_cloud_recent") || "[]");
                 if (recent.length > 0) {
                   return (
-                    <div className="mb-10 px-2 animate-in slide-in-from-top-4 duration-500">
-                       <div className="flex items-center gap-2 mb-4 opacity-40">
-                          <Clock size={14} className="text-slate-900" />
-                          <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-900">My Recent Reports</h4>
+                    <div className="mb-12 px-2 animate-in fade-in slide-in-from-top-6 duration-1000">
+                       <div className="flex items-center justify-between mb-5 px-4">
+                          <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100">
+                                <History size={16} />
+                             </div>
+                             <div className="flex flex-col">
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 leading-none">Official Registry</h4>
+                                <span className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Localized Activity Feed</span>
+                             </div>
+                          </div>
+                          <div className="px-3 py-1 bg-slate-900 rounded-full flex items-center gap-2 shadow-lg">
+                             <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></div>
+                             <span className="text-[7px] font-black text-white uppercase tracking-widest leading-none">Sync Active</span>
+                          </div>
                        </div>
-                       <div className="space-y-3">
+                       <div className="space-y-4">
                           {recent.map((r:any) => (
-                            <div key={r.ticketNo} className="bg-white border border-slate-100 p-4 rounded-2xl flex justify-between items-center shadow-sm active:scale-[0.98] transition-all" 
+                            <div key={r.ticketNo} 
+                                 className="bg-white border border-slate-100 p-6 rounded-[2.5rem] flex justify-between items-center shadow-[0_10px_25px_-5px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] active:scale-[0.97] transition-all cursor-pointer group" 
                                  onClick={() => { setTicketData(r); window.scrollTo(0, 0); }}>
-                               <div className="flex-1 min-w-0 pr-4">
-                                  <p className="text-[9px] font-black text-red-600 uppercase italic leading-none">{r.ticketNo}</p>
-                                  <p className="text-xs font-bold text-slate-900 mt-1 truncate">{r.issueType}</p>
-                                  <p className="text-[8px] font-bold text-slate-400 mt-0.5">{r.timestamp}</p>
+                               <div className="flex-1 min-w-0 pr-6">
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                     <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100/50">{r.ticketNo}</span>
+                                  </div>
+                                  <p className="text-sm font-black text-slate-900 truncate leading-tight group-hover:text-[#D41217] transition-colors">{r.issueType}</p>
+                                  <div className="flex items-center gap-2 mt-2">
+                                     <Clock size={10} className="text-slate-300" />
+                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">{r.timestamp}</p>
+                                  </div>
                                </div>
-                               <button className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center">
-                                  <Download size={16} />
-                               </button>
+                               <div className="flex items-center gap-3">
+                                  <div className="hidden sm:flex flex-col items-end mr-2">
+                                     <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">LOGGED</span>
+                                     <BadgeCheck size={14} className="text-emerald-500 mt-1" />
+                                  </div>
+                                  <button className="w-12 h-12 bg-slate-50 text-slate-500 rounded-2xl flex items-center justify-center hover:bg-[#D41217] hover:text-white transition-all shadow-sm">
+                                     <Download size={18} />
+                                  </button>
+                               </div>
                             </div>
                           ))}
                        </div>
-                       <div className="h-px bg-slate-100 my-10"></div>
+                       <div className="mt-10 mb-6 flex items-center justify-center gap-4 opacity-20">
+                          <div className="h-px bg-slate-300 flex-1"></div>
+                          <span className="text-[10px] font-black uppercase tracking-[0.5em]">REGISTRY END</span>
+                          <div className="h-px bg-slate-300 flex-1"></div>
+                       </div>
                     </div>
                   );
                 }
