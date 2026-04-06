@@ -68,6 +68,9 @@ export const coveringLetters = pgTable("covering_letters", {
   roughIdea: text("rough_idea"),
   language: text("language").default("English").notNull(),
   attachments: text("attachments"), // JSON string or comma separated file notes
+  header: text("header"), // Sticky header (Office Name)
+  reference: text("reference"), // Ref No
+  designation: text("designation"), // Sender Designation
   createdAt: text("created_at"),
 });
 

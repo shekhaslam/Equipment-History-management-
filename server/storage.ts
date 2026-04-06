@@ -52,6 +52,9 @@ sqlite.exec(`
     roughIdea TEXT,
     language TEXT DEFAULT 'English',
     attachments TEXT,
+    header TEXT,
+    reference TEXT,
+    designation TEXT,
     createdAt TEXT
   );
 `);
@@ -94,6 +97,16 @@ try {
 try {
   sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_repair_requests_ticketNo ON repair_requests(ticketNo);");
 } catch(e) {}
+
+// Migration for covering_letters new fields
+try {
+  sqlite.prepare("SELECT header FROM covering_letters LIMIT 1").get();
+} catch (e) {
+  console.log("[STORAGE] Migrating covering_letters for header, reference, designation...");
+  try { sqlite.exec("ALTER TABLE covering_letters ADD COLUMN header TEXT DEFAULT ''"); } catch(ex) {}
+  try { sqlite.exec("ALTER TABLE covering_letters ADD COLUMN reference TEXT DEFAULT ''"); } catch(ex) {}
+  try { sqlite.exec("ALTER TABLE covering_letters ADD COLUMN designation TEXT DEFAULT ''"); } catch(ex) {}
+}
 
 export const storage = new (class SqliteStorage {
   async getEquipment(id: number, userId: string) {
@@ -403,19 +416,20 @@ export const storage = new (class SqliteStorage {
       // UPDATE (Overwrite)
       sqlite.prepare(`
         UPDATE covering_letters SET 
-          recipient = ?, sender = ?, body = ?, roughIdea = ?, language = ?, attachments = ?
+          recipient = ?, sender = ?, body = ?, roughIdea = ?, language = ?, attachments = ?, header = ?, reference = ?, designation = ?
         WHERE id = ?
-      `).run(letter.recipient, letter.sender, letter.body, letter.roughIdea, letter.language, letter.attachments, existing.id);
+      `).run(letter.recipient, letter.sender, letter.body, letter.roughIdea, letter.language, letter.attachments, letter.header, letter.reference, letter.designation, existing.id);
       return { id: existing.id, action: "updated" };
     } else {
       // NEW ENTRY
       const res = sqlite.prepare(`
         INSERT INTO covering_letters (
-          letterNo, date, recipient, sender, subject, body, roughIdea, language, attachments, createdAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          letterNo, date, recipient, sender, subject, body, roughIdea, language, attachments, header, reference, designation, createdAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         letter.letterNo, letter.date, letter.recipient, letter.sender, letter.subject, 
         letter.body, letter.roughIdea, letter.language, letter.attachments, 
+        letter.header, letter.reference, letter.designation,
         new Date().toLocaleString('en-IN')
       );
       return { id: res.lastInsertRowid, action: "created" };

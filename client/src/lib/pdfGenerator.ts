@@ -217,70 +217,94 @@ export const generateUnifiedLogPDF = (equipment: any, ticket: any) => {
   doc.save(`${ticket.ticketNo}_Official_Log.pdf`);
 };
 
-export const generateCoveringLetterPDF = async (data: any) => {
+export const generateCoveringLetterPDF = async (data: any, isPreview: boolean = false) => {
   const doc = new jsPDF();
   const pageHeight = doc.internal.pageSize.height;
   const pageWidth = doc.internal.pageSize.width;
 
-  // 1. Header (Logo & Name)
-  try { doc.addImage("/assets/india-post-logo.png", 'PNG', 15, 10, 22, 13); } catch (e) {}
-  doc.setFont("helvetica", "bold").setFontSize(22).setTextColor(212, 18, 23); 
-  doc.text("DEPARTMENT OF POSTS", 105, 17, { align: "center" });
-  doc.setFontSize(9).setTextColor(100).text("OFFICIAL CORRESPONDENCE UNIT", 105, 22, { align: "center" });
+  // 1. OFFICIAL HEADER (Centered & Bold)
+  doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0);
+  const headerLines = doc.splitTextToSize(data.header || "DEPARTMENT OF POSTS, INDIA", pageWidth - 40);
+  let currentY = 15;
+  headerLines.forEach((line: string) => {
+    doc.text(line, pageWidth / 2, currentY, { align: "center" });
+    currentY += 6;
+  });
 
-  // 2. Metadata (Date & Letter No)
-  doc.setDrawColor(200).line(15, 28, pageWidth - 15, 28);
-  doc.setFontSize(10).setTextColor(0).setFont("helvetica", "bold");
-  doc.text(`LETTER NO: ${data.letterNo || '---'}`, 15, 36);
-  doc.text(`DATE: ${data.date || '---'}`, pageWidth - 15, 36, { align: "right" });
+  // 2. SEPARATOR LINE 1 (Dashed/Solid)
+  currentY += 2;
+  doc.setDrawColor(0).setLineWidth(0.5).line(15, currentY, pageWidth - 15, currentY);
 
-  // 3. Addresses (To & From)
-  let currentY = 48;
-  doc.setFont("helvetica", "bold").setFontSize(10).text("TO,", 15, currentY);
-  doc.setFont("helvetica", "normal").text(data.recipient || "---", 20, currentY + 6);
+  // 3. RECIPIENT (TO)
+  currentY += 10;
+  doc.setFont("helvetica", "bold").setFontSize(11).text("To,", 20, currentY);
+  const recipientLines = doc.splitTextToSize(data.recipient || "---", pageWidth - 50);
+  doc.setFont("helvetica", "normal");
+  recipientLines.forEach((line: string) => {
+    currentY += 5;
+    doc.text(line, 20, currentY);
+  });
+
+  // 4. LETTER NO & DATED LINE (With line below)
+  currentY += 12;
+  doc.setDrawColor(0).setLineWidth(0.3);
+  doc.setFont("helvetica", "normal").setFontSize(10);
+  doc.text(`No: ${data.letterNo || '---'}`, 20, currentY);
+  doc.text(`dated ${data.date || '---'}`, pageWidth - 20, currentY, { align: "right" });
+  doc.line(20, currentY + 1.5, pageWidth - 20, currentY + 1.5);
+
+  // 5. SUBJECT & REFERENCE
+  currentY += 10;
+  doc.setFont("helvetica", "bold").text(`Sub: ${data.subject || '---'}`, 20, currentY, { maxWidth: pageWidth - 40 });
   
-  currentY += 20;
-  doc.setFont("helvetica", "bold").text("FROM,", 15, currentY);
-  doc.setFont("helvetica", "normal").text(data.sender || "---", 20, currentY + 6);
+  if (data.reference) {
+    currentY += 7;
+    doc.text(`Ref: ${data.reference}`, 20, currentY, { maxWidth: pageWidth - 40 });
+  }
 
-  // 4. Subject
-  currentY += 20;
-  doc.setFont("helvetica", "bold").text(`SUBJECT: ${data.subject || '---'}`, 15, currentY, { maxWidth: pageWidth - 30 });
-  doc.line(15, currentY + 2, 15 + doc.getTextWidth(`SUBJECT: ${data.subject || ''}`), currentY + 2);
-
-  // 5. Salutation & Body
+  // 6. BODY (WITH INDENT)
   currentY += 15;
-  doc.setFont("helvetica", "normal").text("Madam/Sir,", 15, currentY);
+  doc.setFont("helvetica", "normal").setFontSize(11);
+  const bodyText = data.body || "With reference to the above...";
+  const bodyLines = doc.splitTextToSize(bodyText, pageWidth - 40);
   
-  const bodyLines = doc.splitTextToSize(data.body || "", pageWidth - 30);
-  doc.text(bodyLines, 15, currentY + 10);
+  // First line indent
+  doc.text(bodyLines[0], 35, currentY);
+  if (bodyLines.length > 1) {
+    doc.text(bodyLines.slice(1), 20, currentY + 6);
+  }
 
-  // 6. Signature
-  const finalY = currentY + 15 + (bodyLines.length * 5);
-  doc.setFont("helvetica", "bold").text("Sincerely,", pageWidth - 15, finalY + 15, { align: "right" });
-  doc.setFont("helvetica", "normal").text(`${data.sender || '---'}`, pageWidth - 15, finalY + 25, { align: "right" });
-  doc.setFontSize(8).setTextColor(150).text("(Digital Signature Applied)", pageWidth - 15, finalY + 30, { align: "right" });
+  // 7. SIGNATURE BLOCK (Right Aligned)
+  const finalY = currentY + (bodyLines.length * 6) + 20;
+  const name = `(${data.sender || '---'})`;
+  const designation = data.designation || "---";
+  
+  doc.setFont("helvetica", "bold");
+  doc.text(name, pageWidth - 20, finalY, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.text(designation, pageWidth - 20, finalY + 5, { align: "right" });
+  
+  const officeLines = doc.splitTextToSize(data.header?.split('\n')[1] || "", 60);
+  officeLines.forEach((line: string, idx: number) => {
+    doc.text(line, pageWidth - 20, finalY + 10 + (idx * 5), { align: "right" });
+  });
 
-  // 7. Smart Attachment Merging
-  if (data.attachmentData && data.attachmentData.length > 0) {
+  // 8. ATTACHMENT PAGES (Not for preview)
+  if (!isPreview && data.attachmentData && data.attachmentData.length > 0) {
     for (const attachment of data.attachmentData) {
       doc.addPage();
       const isImage = attachment.type.startsWith('image/');
-      
       if (isImage) {
-        // Center image on page
-        const imgWidth = pageWidth - 20;
-        const imgHeight = (imgWidth * 0.7); // Roughly 4:3
-        doc.addImage(attachment.data, 'JPEG', 10, 10, imgWidth, imgHeight);
-        doc.setFontSize(8).text(`Attachment: ${attachment.name}`, 105, imgHeight + 20, { align: "center" });
-      } else {
-        doc.setFontSize(12).text(`Note: Attachment "${attachment.name}" is a PDF file.`, 105, 100, { align: "center" });
-        doc.setFontSize(8).text("(Due to library constraints, PDF merging is visual only in this version)", 105, 110, { align: "center" });
+        doc.addImage(attachment.data, 'JPEG', 10, 10, pageWidth - 20, (pageWidth - 20) * 0.7);
       }
     }
   }
 
-  doc.save(`${data.letterNo || 'Letter'}_Draft.pdf`);
+  if (isPreview) {
+    return doc.output('bloburl');
+  } else {
+    doc.save(`${data.letterNo || 'Letter'}_Official.pdf`);
+  }
 };
 
 export const generateServiceLogPDF = (equipment: any, ticket: any, repair: any) => {
