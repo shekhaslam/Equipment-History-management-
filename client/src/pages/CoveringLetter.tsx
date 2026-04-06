@@ -31,7 +31,7 @@ export default function CoveringLetter() {
   });
 
   const form = useForm({
-    resolver: zodResolver(insertCoveringLetterSchema),
+    resolver: zodResolver(insertCoveringLetterSchema as any),
     defaultValues: {
       header: localStorage.getItem("letter_header") || "DEPARTMENT OF POSTS, INDIA\nOffice of the Manager Agra NSH, RMS X Division Agra-282001",
       letterNo: "",
@@ -172,7 +172,7 @@ export default function CoveringLetter() {
   return (
     <div className="min-h-screen bg-slate-50/30 pb-20 overflow-x-hidden">
       <div className="max-w-[1700px] mx-auto px-6 py-6">
-        <PageHeader title="Official Correspondence" subtitle="AI-Powered Letter Drafting & Digital Archiving" />
+        <PageHeader title="Official Correspondence" />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
           
