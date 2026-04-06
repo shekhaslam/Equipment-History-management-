@@ -4,7 +4,7 @@ color 0A
 
 echo [1/2] Starting Backend Server...
 :: Naya window khol kar server chalu karega
-start cmd /k "cd /d C:\Equipment-History && npx tsx server/index.ts"
+start cmd /k "cd /d C:\Equipment-History && npm run dev"
 
 echo Waiting for server to initialize...
 :: 5 second ka wait taaki server chalu ho jaye
