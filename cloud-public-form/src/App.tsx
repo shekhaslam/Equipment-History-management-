@@ -381,94 +381,93 @@ function App() {
              <div>
               <p style="font-size: 9px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Office / Unit</p>
               <p style="font-weight: 700; font-size: 13px; margin: 5px 0;">${ticket.officeName || (equipment ? equipment.office : "N/A")}</p>
-            </div>
              <div>
               <p style="font-size: 9px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Division</p>
               <p style="font-weight: 700; font-size: 13px; margin: 5px 0;">${ticket.division || (equipment ? equipment.division : "N/A")}</p>
             </div>
           </div>
-            <h1 style="margin: 0; font-size: 32px; font-weight: 900; text-transform: uppercase; color: #D41217; letter-spacing: -1px;">India Post</h1>
-            <p style="margin: 4px 0 0; font-size: 11px; color: #64748b; font-weight: 800; letter-spacing: 4px;">OFFICIAL MAINTENANCE AUDIT</p>
-          </div>
-          <div style="text-align: right; min-width: 180px;">
-            <p style="margin: 0; font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Ticket Identification</p>
-            <div style="margin-top: 8px; background: #fff; border: 2px solid #0f172a; border-radius: 12px; padding: 10px 20px;">
-              <span style="font-size: 20px; font-weight: 900; color: #0f172a; font-family: monospace;">${ticket.ticketNo}</span>
-            </div>
-          </div>
         </div>
 
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: 30px; margin-bottom: 30px;">
-          <h3 style="margin: 0 0 20px; font-size: 11px; font-weight: 900; color: #64748b; letter-spacing: 2px; text-transform: uppercase;">A. ASSET INFORMATION</h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-            <div>
-              <p style="font-size: 10px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Equipment Name</p>
-              <p style="font-weight: 800; font-size: 16px; margin: 6px 0; color: #1e293b;">${ticket.equipmentName || (equipment ? equipment.name : "N/A")}</p>
-            </div>
-            <div>
-              <p style="font-size: 10px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Serial Number</p>
-              <p style="font-weight: 900; font-size: 16px; margin: 6px 0; color: #0f172a; font-family: monospace;">${ticket.serialNumber || (equipment ? equipment.sn : "N/A")}</p>
-            </div>
-          </div>
-          <div style="margin-top: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-             <div>
-              <p style="font-size: 10px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Office / Unit</p>
-              <p style="font-weight: 700; font-size: 14px; margin: 6px 0;">${ticket.officeName || (equipment ? equipment.office : "N/A")}</p>
-            </div>
-             <div>
-              <p style="font-size: 10px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Division</p>
-              <p style="font-weight: 700; font-size: 14px; margin: 6px 0;">${ticket.division || (equipment ? equipment.division : "N/A")}</p>
-            </div>
-          </div>
-        </div>
-
-        <div style="border: 2px solid #0f172a; border-radius: 25px; padding: 35px; margin-bottom: 30px; position: relative; overflow: hidden;">
-          <h3 style="margin: 0 0 25px; font-size: 11px; font-weight: 900; color: #64748b; letter-spacing: 2px; text-transform: uppercase;">B. INCIDENT & REPORTER DETAILS</h3>
+        <div id="pdf-content" style="padding: 40px; background: white; font-family: sans-serif; color: #0f172a; max-width: 800px; margin: 0 auto; line-height: 1.5;">
           
-          <div style="margin: 0; padding: 25px 0; border-top: 1px dashed #cbd5e1;">
-            <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-              <tr><td style="padding: 12px 0; color: #64748b; font-weight: 600;">REPORTING OFFICER:</td><td align="right" style="font-weight: 900; color: #0f172a;">${ticket.reporterName}</td></tr>
-              <tr><td style="padding: 12px 0; color: #64748b; font-weight: 600;">SECTION / BRANCH:</td><td align="right" style="font-weight: 800;">${ticket.branchName}</td></tr>
-              <tr><td style="padding: 12px 0; color: #64748b; font-weight: 600;">NATURE OF FAULT:</td><td align="right" style="font-weight: 900; color: #D41217;">${ticket.issueType}</td></tr>
-              <tr><td style="padding: 12px 0; color: #64748b; font-weight: 600;">LOG TIMESTAMP:</td><td align="right" style="font-weight: 800;">${ticket.timestamp}</td></tr>
-            </table>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 4px solid #D41217; padding-bottom: 20px;">
+            <div style="flex: 1;">
+              <h1 style="margin: 0; font-size: 38px; font-weight: 900; text-transform: uppercase; color: #D41217; letter-spacing: -2px; line-height: 1;">India Post</h1>
+              <p style="margin: 8px 0 0; font-size: 12px; color: #64748b; font-weight: 800; letter-spacing: 5px; text-transform: uppercase;">Official Service Log / Receipt</p>
+            </div>
+            <div style="text-align: right; background: #0f172a; color: white; padding: 15px 25px; border-radius: 15px; min-width: 200px;">
+              <p style="margin: 0; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #94a3b8;">Ticket Identification</p>
+              <h2 style="margin: 5px 0 0; font-size: 24px; font-weight: 900; color: #fbbf24; font-family: monospace;">${ticket.ticketNo}</h2>
+            </div>
           </div>
 
-          <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 15px; padding: 20px; margin-top: 10px;">
-             <p style="font-size: 9px; color: #94a3b8; font-weight: 800; margin: 0 0 10px; text-transform: uppercase;">Description of Problem</p>
-             <p style="font-size: 13px; line-height: 1.6; color: #334155; font-style: italic; margin: 0;">"${ticket.issueDescription}"</p>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 25px; padding: 35px; margin-bottom: 40px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+            <h3 style="margin: 0 0 25px; font-size: 12px; font-weight: 900; color: #D41217; letter-spacing: 3px; text-transform: uppercase; border-left: 4px solid #D41217; padding-left: 15px;">A. ASSET IDENTIFICATION</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+              <div>
+                <p style="font-size: 11px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Equipment Name</p>
+                <p style="font-weight: 900; font-size: 18px; margin: 8px 0; color: #1e293b;">${ticket.equipmentName || (equipment ? equipment.name : "N/A")}</p>
+                <p style="font-size: 11px; color: #94a3b8; font-weight: 800; margin: 15px 0 0; text-transform: uppercase;">Serial Number</p>
+                <p style="font-weight: 900; font-size: 18px; margin: 8px 0; color: #0f172a; font-family: monospace;">${ticket.serialNumber || (equipment ? equipment.sn : "N/A")}</p>
+              </div>
+              <div>
+                <p style="font-size: 11px; color: #94a3b8; font-weight: 800; margin: 0; text-transform: uppercase;">Office / Unit Location</p>
+                <p style="font-weight: 800; font-size: 18px; margin: 8px 0; color: #1e293b;">${ticket.officeName || (equipment ? equipment.office : "N/A")}</p>
+                <p style="font-size: 11px; color: #94a3b8; font-weight: 800; margin: 15px 0 0; text-transform: uppercase;">Division / Region</p>
+                <p style="font-weight: 700; font-size: 16px; margin: 8px 0; color: #334155;">${ticket.division || (equipment ? equipment.division : "N/A")}</p>
+              </div>
+            </div>
           </div>
-          
-          <p style="font-size: 8px; text-align: center; color: #94a3b8; margin: 30px 0 0; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Verified Digital Record - Authenticated via OTP System</p>
-        </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; padding-top: 20px;">
-           <div style="text-align: center;">
-              <p style="margin-bottom: 40px; border-bottom: 2px solid #e2e8f0; width: 120px;"></p>
-              <p style="font-size: 10px; font-weight: 900; margin: 0; color: #64748b;">REPORTER'S SIGNATURE</p>
-           </div>
-           <div style="text-align: center;">
-              <p style="margin-bottom: 40px; border-bottom: 2px solid #e2e8f0; width: 150px;"></p>
-              <p style="font-size: 10px; font-weight: 900; margin: 0; color: #0f172a;">OFFICE SEAL / AUTHORITY</p>
-           </div>
+          <div style="border: 3px solid #0f172a; border-radius: 30px; padding: 40px; margin-bottom: 40px; position: relative;">
+            <h3 style="margin: 0 0 30px; font-size: 12px; font-weight: 900; color: #64748b; letter-spacing: 3px; text-transform: uppercase;">B. FAULT & REPORTER DETAILS</h3>
+            
+            <div style="margin: 0; padding: 30px 0; border-top: 2px dashed #e2e8f0;">
+              <table style="width: 100%; font-size: 15px; border-collapse: collapse;">
+                <tr><td style="padding: 15px 0; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Reporting Officer:</td><td align="right" style="font-weight: 900; color: #0f172a;">${ticket.reporterName}</td></tr>
+                <tr><td style="padding: 15px 0; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Section / Branch:</td><td align="right" style="font-weight: 800;">${ticket.branchName}</td></tr>
+                <tr><td style="padding: 15px 0; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Nature of Fault:</td><td align="right" style="font-weight: 900; color: #D41217;">[${ticket.issueType}]</td></tr>
+                <tr><td style="padding: 15px 0; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 11px;">Log Timestamp:</td><td align="right" style="font-weight: 800;">${ticket.timestamp}</td></tr>
+              </table>
+            </div>
+
+            <div style="margin-top: 20px; padding: 25px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 20px; border-left: 8px solid #fbbf24;">
+               <p style="margin: 0 0 10px; font-size: 10px; font-weight: 900; color: #b45309; text-transform: uppercase; letter-spacing: 2px;">Fault Description / Remarks</p>
+               <p style="margin: 0; font-size: 15px; font-weight: 600; color: #78350f; font-style: italic;">"${ticket.issueDescription}"</p>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 40px; margin-top: 40px;">
+            <div style="text-align: left;">
+              <p style="margin: 0 0 10px; font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 2px;">Verification Status</p>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 12px; height: 12px; background: #10b981; border-radius: 50%;"></div>
+                <p style="margin: 0; font-size: 14px; font-weight: 900; color: #064e3b;">DIGITALLY SIGNED & VERIFIED</p>
+              </div>
+            </div>
+            <div style="text-align: right;">
+               <p style="margin: 0; font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 4px;">Department of Posts | India</p>
+            </div>
+          </div>
         </div>
-      </div>
     `;
 
-    const opt = {
+    const options = {
       margin: 0,
-      filename: `Report_${ticket.ticketNo}.pdf`,
+      filename: `Maintenance_Log_${ticket.ticketNo}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 3, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
-    // Explicitly target download
     try {
-      html2pdf().from(pdfContent).set(opt).save();
+      const element = document.getElementById('pdf-content');
+      if (element) {
+        html2pdf().from(element).set(options).save();
+      }
     } catch (e) {
       console.error("Direct download failed:", e);
-      window.print(); // Fallback
+      window.print();
     }
   };
 
@@ -773,11 +772,12 @@ function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:hidden">
                 <button 
-                  type="button"
-                  onClick={generatePDFForData} 
-                  className="h-16 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black active:scale-95 transition-all"
+                    onClick={() => generatePDFForData(ticketData)}
+                    className="h-16 bg-[#D41217] text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-red-700 shadow-[0_15px_30px_-5px_rgba(212,18,23,0.3)] transition-all active:scale-95 group relative overflow-hidden"
                 >
-                  <Download size={18} className="text-amber-400" /> Save Report as PDF
+                    <Download size={22} className="group-hover:translate-y-0.5 transition-transform" /> 
+                    Download Official Receipt
+                    <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                 </button>
                 <button 
                   type="button"

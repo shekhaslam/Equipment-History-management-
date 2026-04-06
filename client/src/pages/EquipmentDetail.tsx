@@ -50,7 +50,11 @@ export default function EquipmentDetail() {
             const electron = (window as any).require('electron');
             await electron.ipcRenderer.invoke('update-cloud-ticket-status', {
                 ticketNo: ticket.ticketNo,
-                status: 'RESOLVED'
+                status: 'RESOLVED',
+                nature: resolveData.nature,
+                vendorName: resolveData.vendorName,
+                remarks: resolveData.remarks,
+                date: resolveData.date
             });
           } catch(e) {}
       }

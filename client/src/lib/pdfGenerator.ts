@@ -97,18 +97,18 @@ export const generateUnifiedLogPDF = (equipment: any, ticket: any) => {
   // 1. HEADER & LOGO (Improved Modern Layout)
   try { doc.addImage("/assets/india-post-logo.png", 'PNG', 15, 10, 22, 13); } catch (e) {}
 
-  doc.setFont("helvetica", "bold").setFontSize(24).setTextColor(212, 18, 23); 
+  doc.setFont("helvetica", "bold").setFontSize(28).setTextColor(212, 18, 23); 
   doc.text("DEPARTMENT OF POSTS", 105, 18, { align: "center" });
-  doc.setFontSize(8).setTextColor(100).setFont("helvetica", "normal").text("GOVERNMENT OF INDIA | OFFICIAL SERVICE LOG", 105, 23, { align: "center" });
+  doc.setFontSize(10).setTextColor(80).setFont("helvetica", "bold").text("GOVERNMENT OF INDIA | OFFICIAL SERVICE LOG", 105, 23, { align: "center" });
   
-  // 2. TICKET ID SECTION (Dedicated Centered Row - No Overlap)
-  doc.setDrawColor(212, 18, 23).setLineWidth(0.5);
-  doc.line(15, 27, 195, 27); // Decorative Divider Line
+  // 2. TICKET ID SECTION (Premium Styled Box)
+  doc.setDrawColor(212, 18, 23).setLineWidth(1.0);
+  doc.line(15, 27, 195, 27); 
   
-  doc.setDrawColor(220).setLineWidth(0.2).setFillColor(252, 252, 252);
-  doc.roundedRect(75, 29, 60, 12, 1.5, 1.5, 'FD'); // Centered Box
-  doc.setFont("helvetica", "bold").setFontSize(7).setTextColor(150).text("OFFICIAL TICKET ID", 105, 33, { align: "center" });
-  doc.setFontSize(11).setTextColor(15, 23, 42).text(ticket.ticketNo || "N/A", 105, 38, { align: "center" });
+  doc.setDrawColor(15, 23, 42).setLineWidth(0.5).setFillColor(255, 255, 255);
+  doc.roundedRect(65, 29, 80, 15, 3, 3, 'FD'); 
+  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(100).text("OFFICIAL SERVICE TICKET ID", 105, 34, { align: "center" });
+  doc.setFontSize(15).setTextColor(15, 23, 42).text(ticket.ticketNo || "N/A", 105, 41, { align: "center" });
 
   // 3. MACHINE DETAILS SECTION
   autoTable(doc, {
