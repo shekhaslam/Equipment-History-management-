@@ -264,21 +264,54 @@ export async function registerRoutes(
     }
   });
 
-  // ✅ 11. Resolve Ticket: Mark as processed with admin notes
+  // ✅ 11. Resolve Ticket: Mark as processed with admin notes and sync to cloud
   app.post("/api/admin/tickets/:id/resolve", async (req, res) => {
     try {
       const id = Number(req.params.id);
       const { date, nature, amount, invoiceNo, vendorName, remarks } = req.body;
+      
+      const ticket = await storage.getTicketById(id);
+      if (!ticket) return res.status(404).send("Ticket record not found");
+
       const success = await storage.resolveTicket(id, { 
-        date: date || new Date().toLocaleDateString('en-GB'), 
+        date: date || new Date().toISOString().split('T')[0], 
         nature: nature || "Verified Repair", 
         amount: amount || "0",
         invoiceNo: invoiceNo || "",
         vendorName: vendorName || "",
         remarks: remarks || ""
       });
-      if (success) res.json({ success: true, message: "Ticket marked as resolved" });
-      else res.status(404).send("Ticket record not found");
+
+      if (success) {
+        // ✅ TRIGGER CLOUD SYNC FOR STATUS CHANGE (PENDING -> RESOLVED)
+        if (ticket.ticketNo && ticket.ticketNo.startsWith('DOP_')) {
+          console.log("☁️ Syncing RESOLVED Status to Cloud:", ticket.ticketNo);
+          try {
+            const fetch = (await import('node-fetch')).default;
+            const { CLOUD_BRIDGE_URL } = process.env;
+            if (CLOUD_BRIDGE_URL) {
+              await fetch(CLOUD_BRIDGE_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                  action: "update_ticket_status", 
+                  ticketNo: ticket.ticketNo, 
+                  status: "RESOLVED",
+                  date: date || new Date().toLocaleDateString('en-GB'),
+                  nature: nature || "Verified Repair",
+                  vendorName: vendorName || "",
+                  remarks: remarks || ""
+                })
+              });
+            }
+          } catch (e) {
+            console.error("Cloud Resolution Sync failed:", e.message);
+          }
+        }
+        res.json({ success: true, message: "Ticket marked as resolved" });
+      } else {
+        res.status(404).send("Could not resolve ticket");
+      }
     } catch (err) {
       res.status(500).json({ message: "Resolution failed" });
     }

@@ -110,66 +110,110 @@ export const generateProPDF = (equipment: any, isPreview: boolean = false) => {
   }
 };
 
-export const generateServiceLogPDF = (equipment: any, ticket: any, repair: any) => {
+export const generateUnifiedLogPDF = (equipment: any, ticket: any) => {
   const doc = new jsPDF();
+  const isResolved = ticket.status === 'resolved' || ticket.status === 'archived';
   
-  // 1. HEADER & LOGO
-  try { doc.addImage("/assets/india-post-logo.png", 'PNG', 15, 10, 25, 15); } catch (e) {}
+  // 1. HEADER & LOGO (Premium Government Style)
+  try { doc.addImage("/assets/india-post-logo.png", 'PNG', 15, 10, 22, 13); } catch (e) {}
 
-  doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(212, 18, 23); 
-  doc.text("DEPARTMENT OF POSTS", 115, 18, { align: "center" });
-  doc.setFontSize(14).setTextColor(0).text("Official Service Log", 115, 26, { align: "center" });
+  doc.setFont("helvetica", "bold").setFontSize(22).setTextColor(212, 18, 23); 
+  doc.text("DEPARTMENT OF POSTS", 105, 18, { align: "center" });
+  doc.setFontSize(8).setTextColor(120).setFont("helvetica", "normal").text("OFFICIAL SERVICE HISTORY & RESOLUTION LOG", 105, 23, { align: "center" });
+  
+  // Ref ID Box (Elegantly Styled)
+  doc.setDrawColor(220).setLineWidth(0.3).setFillColor(252, 252, 252);
+  doc.roundedRect(145, 10, 50, 15, 1.5, 1.5, 'FD');
+  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(150).text("TICKET ID", 170, 15, { align: "center" });
+  doc.setFontSize(11).setTextColor(15, 23, 42).text(ticket.ticketNo || "N/A", 170, 21, { align: "center" });
 
-  doc.setFontSize(10);
-  doc.text(`TICKET NO: ${ticket.ticketNo}`, 130, 38);
-  doc.text(`DATE: ${repair?.date || new Date().toLocaleDateString('en-GB')}`, 130, 44);
-
+  // 2. MACHINE DETAILS SECTION (Red Header)
   autoTable(doc, {
-    startY: 55,
-    head: [['Machine Details', '']],
+    startY: 35,
+    head: [['ASSET SPECIFICATIONS', '']],
     body: [
-      ["Equipment:", `${equipment.equipmentName} (${equipment.modelNumber})`],
-      ["Serial No:", equipment.serialNumber],
-      ["Office:", `${equipment.officeName} | ${equipment.division}`],
+      ["Machine Name:", `${equipment.equipmentName} (${equipment.modelNumber || '---'})`],
+      ["Serial Number:", equipment.serialNumber || "N/A"],
+      ["Office Location:", `${equipment.officeName} | ${equipment.division}`],
+      ["Fault Category:", (ticket.fault || "GENERAL").toUpperCase()],
     ],
-    theme: 'grid', styles: { fontSize: 10, cellPadding: 3 }, headStyles: { fillColor: [212, 18, 23] }
+    theme: 'grid',
+    styles: { fontSize: 9, cellPadding: 3, font: "helvetica" },
+    headStyles: { fillColor: [212, 18, 23], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45, fillColor: [248, 250, 252] } }
   });
 
-  const yAfterEq = (doc as any).lastAutoTable.finalY + 10;
-  
+  // 3. REPORTER INFORMATION (Dark Grey Header)
+  const yAfterEq = (doc as any).lastAutoTable.finalY + 8;
   autoTable(doc, {
     startY: yAfterEq,
-    head: [['Reporter Information', '']],
+    head: [['ORIGINAL FAULT REPORT', '']],
     body: [
-      ["Reporter Name:", ticket.reporterName || "N/A"],
-      ["Branch:", ticket.reporterBranch || "N/A"],
-      ["Mobile:", ticket.reporterMobile || "N/A"],
-      ["Issue Description:", ticket.issueDescription || "N/A"]
+      ["Reporting Officer:", ticket.reporterName || "N/A"],
+      ["Section/Branch:", ticket.reporterBranch || "N/A"],
+      ["Contact Number:", ticket.reporterMobile || "N/A"],
+      ["Issue Description:", ticket.issueDescription?.split(' ||| ')[0] || "N/A"],
+      ["Reported At:", ticket.createdAt || "N/A"],
     ],
-    theme: 'grid', styles: { fontSize: 10, cellPadding: 3 }, headStyles: { fillColor: [50, 50, 50] }
+    theme: 'grid',
+    styles: { fontSize: 9, cellPadding: 3, font: "helvetica" },
+    headStyles: { fillColor: [51, 65, 85], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45, fillColor: [248, 250, 252] } }
   });
 
-  const yAfterRep = (doc as any).lastAutoTable.finalY + 10;
+  // 4. ADMIN RESOLUTION DETAILS (Emerald Green Header - Shows only if resolved)
+  if (isResolved) {
+    const yAfterRep = (doc as any).lastAutoTable.finalY + 8;
+    
+    // Structured details from ticket object itself
+    const resNature = ticket.resolveNature || "Verified Technical Repair";
+    const resVendor = ticket.resolveVendor || "DOP In-House Service";
+    const resInvoice = ticket.resolveInvoice || "Official Log Only";
+    const resCost = ticket.resolveAmount || "0";
+    const resDate = ticket.resolveDate || ticket.createdAt?.split(',')[0] || "---";
 
-  autoTable(doc, {
-    startY: yAfterRep,
-    head: [['Admin Resolution Details', '']],
-    body: [
-      ["Nature of Work:", repair?.natureOfRepair || "N/A"],
-      ["Vendor/Company:", repair?.vendorName || "N/A"],
-      ["Invoice Number:", repair?.invoiceNo || "N/A"],
-      ["Total Cost:", `INR ${repair?.amount || "0"}`],
-      ["Admin Remarks:", repair?.remarks || "N/A"]
-    ],
-    theme: 'grid', styles: { fontSize: 10, cellPadding: 3 }, headStyles: { fillColor: [34, 197, 94] }
-  });
+    autoTable(doc, {
+      startY: yAfterRep,
+      head: [['OFFICIAL RESOLUTION & SERVICE SUMMARY', '']],
+      body: [
+        ["Nature of Work:", resNature],
+        ["Vendor/Agency:", resVendor],
+        ["Invoice Number:", resInvoice],
+        ["Resolution Date:", resDate],
+        ["Total Cost:", `INR ${resCost}`],
+        ["Technical Notes:", ticket.resolveRemarks || "Service completed successfully."]
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45 } }
+    });
+  }
 
-  const footerY = doc.internal.pageSize.height - 35;
-  doc.setDrawColor(180).line(20, footerY, 70, footerY); 
-  doc.setFontSize(10).setTextColor(0).text("Reporter Signature", 45, footerY + 6, { align: "center" });
+  // 5. FOOTER & VERIFICATION
+  const pageHeight = doc.internal.pageSize.height;
+  const footerY = pageHeight - 35;
+
+  // Verification Seal (Circle)
+  doc.setDrawColor(16, 185, 129).setLineWidth(0.5);
+  doc.circle(35, footerY - 5, 12);
+  doc.setFontSize(5).setTextColor(16, 185, 129).text("VERIFIED", 35, footerY - 7, { align: "center" });
+  doc.text("DIGITAL", 35, footerY - 4, { align: "center" });
+  doc.text("LOG", 35, footerY - 1, { align: "center" });
+
+  doc.setDrawColor(180).line(20, footerY + 10, 70, footerY + 10); 
+  doc.setFontSize(8).setTextColor(100).text("Reporting Officer Signature", 45, footerY + 15, { align: "center" });
   
-  doc.line(140, footerY, 190, footerY); 
-  doc.text("Office Seal & Sign", 165, footerY + 6, { align: "center" });
+  doc.line(140, footerY + 10, 190, footerY + 10); 
+  doc.text("Office Seal & Signatory", 165, footerY + 15, { align: "center" });
 
-  doc.save(`${ticket.ticketNo}_ServiceLog.pdf`);
+  // System Footer
+  doc.setFontSize(7).setTextColor(150).text("This is a computer-generated official document. No physical signature required for standard filing.", 105, pageHeight - 10, { align: "center" });
+
+  doc.save(`Official_ServiceLog_${ticket.ticketNo}.pdf`);
 };
+
+export const generateServiceLogPDF = (equipment: any, ticket: any, repair: any) => {
+  // Keeping this for backward compatibility or direct calls
+  generateUnifiedLogPDF(equipment, ticket);
+};

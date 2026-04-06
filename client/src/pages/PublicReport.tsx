@@ -52,12 +52,31 @@ export default function PublicReport() {
       return res.json();
     },
     onSuccess: (serverData) => {
-      setTicketData({
+      const timestamp = new Date().toLocaleString('en-IN', { 
+        day: '2-digit', month: '2-digit', year: 'numeric', 
+        hour: '2-digit', minute: '2-digit', hour12: true 
+      });
+
+      const newTicket = {
         ...formData,
         ticketNo: serverData.ticketNo,
-        timestamp: new Date().toLocaleString('en-IN')
-      });
+        timestamp: timestamp
+      };
+      setTicketData(newTicket);
+      
+      // ✅ SAVE TO LOCAL STORAGE (Recent Reports)
+      try {
+        const recent = JSON.parse(localStorage.getItem("dop_recent_reports") || "[]");
+        const updated = [newTicket, ...recent.filter((t:any) => t.ticketNo !== newTicket.ticketNo)].slice(0, 5);
+        localStorage.setItem("dop_recent_reports", JSON.stringify(updated));
+      } catch (e) {}
+
       toast({ title: "SUCCESS", description: "Your report has been received officially." });
+      
+      // ✅ AUTO DOWNLOAD PDF
+      setTimeout(() => {
+        generatePDF(newTicket);
+      }, 1000);
     },
     onError: (error: any) => {
       console.error("Submission Error:", error);
@@ -128,6 +147,62 @@ export default function PublicReport() {
     };
     html2pdf().from(pdfContent).set(opt).save();
   };
+
+  const generatePDFForRecent = (ticket: any) => {
+    // Helper to generate PDF from stored recent ticket data
+    const pdfContent = `
+      <div style="padding: 40px; font-family: 'Inter', sans-serif; color: #1e293b;">
+        <div style="display: flex; align-items: center; border-bottom: 4px solid #D41217; padding-bottom: 20px; margin-bottom: 30px; justify-content: space-between;">
+          <div>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 900; text-transform: uppercase; color: #D41217;">India Post</h1>
+            <p style="margin: 2px 0 0; font-size: 10px; color: #64748b; font-weight: 800; letter-spacing: 3px;">OFFICIAL MAINTENANCE AUDIT</p>
+          </div>
+          <div style="text-align: right;">
+            <p style="margin: 0; font-size: 10px; font-weight: 900;">TICKET ID</p>
+            <p style="margin: 0; font-size: 18px; font-weight: 900; color: #0f172a;">${ticket.ticketNo}</p>
+          </div>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 30px;">
+          <h3 style="margin: 0 0 15px; font-size: 12px; font-weight: 900; color: #64748b; letter-spacing: 1px;">DEVICE INFORMATION</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <p style="font-size: 10px; color: #94a3b8; margin: 0;">EQUIPMENT</p>
+              <p style="font-weight: 800; font-size: 14px; margin: 4px 0;">${equipment.equipmentName}</p>
+            </div>
+            <div>
+              <p style="font-size: 10px; color: #94a3b8; margin: 0;">SERIAL NUMBER</p>
+              <p style="font-weight: 800; font-size: 14px; margin: 4px 0;">${equipment.serialNumber}</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="border: 2px solid #0f172a; border-radius: 25px; padding: 30px; margin-bottom: 30px; position: relative; overflow: hidden;">
+          <h2 style="margin: 0; font-size: 14px; font-weight: 900; color: #64748b; text-align: center; text-transform: uppercase;">Tracking Status: <span style="color: #059669;">REGISTERED</span></h2>
+          <div style="margin: 20px 0; border-top: 1px dashed #cbd5e1; border-bottom: 1px dashed #cbd5e1; padding: 20px 0;">
+            <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; color: #64748b;">REPORTED BY:</td><td align="right" style="font-weight: 800;">${ticket.reporterName}</td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b;">OFFICE:</td><td align="right" style="font-weight: 800;">${ticket.branchName}</td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b;">FAULT TYPE:</td><td align="right" style="font-weight: 800; color: #D41217;">${ticket.issueType}</td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b;">TIMESTAMP:</td><td align="right" style="font-weight: 800;">${ticket.timestamp}</td></tr>
+            </table>
+          </div>
+          <p style="font-size: 9px; text-align: center; color: #94a3b8; margin: 0;">Verified Digital Copy - No Signature Required</p>
+        </div>
+      </div>
+    `;
+
+    const opt = {
+      margin: 0,
+      filename: `Report_${ticket.ticketNo}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 3, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().from(pdfContent).set(opt).save();
+  };
+
+  const recentReports = JSON.parse(localStorage.getItem("dop_recent_reports") || "[]");
 
   if (isLoading) return <div className="flex h-screen items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-red-600" /></div>;
   if (!equipment) return <div className="p-10 text-center font-black uppercase text-red-600">Invalid QR Code</div>;
@@ -242,6 +317,36 @@ export default function PublicReport() {
           )}
         </div>
       </div>
+      {/* ✅ RECENT REPORTS SECTION */}
+      {recentReports.length > 0 && !ticketData && (
+        <div className="w-full max-w-xl mt-8 animate-in slide-in-from-bottom-5 duration-700">
+           <div className="flex items-center gap-2 mb-4 px-6">
+              <Clock size={16} className="text-slate-400" />
+              <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">My Recent Reports (This Device)</h3>
+           </div>
+           <div className="space-y-3">
+              {recentReports.map((report:any) => (
+                <div key={report.ticketNo} className="bg-white border border-slate-100 p-5 rounded-[1.5rem] shadow-sm flex justify-between items-center group hover:border-emerald-200 transition-all">
+                   <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-emerald-500 uppercase italic tracking-tighter">{report.ticketNo}</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5">{report.issueType}</span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase mt-1">Logged: {report.timestamp}</span>
+                   </div>
+                   <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => generatePDFForRecent(report)}
+                      className="h-10 w-10 md:w-auto md:px-4 rounded-xl hover:bg-emerald-50 text-emerald-600 font-black text-[9px] uppercase tracking-widest flex items-center gap-2"
+                   >
+                     <Download size={14} />
+                     <span className="hidden md:inline">PDF</span>
+                   </Button>
+                </div>
+              ))}
+           </div>
+        </div>
+      )}
+
       <footer className="mt-12 text-slate-400 text-[10px] font-bold uppercase tracking-widest italic">App developed by Shekh Aslam, RMS X DN Jhansi</footer>
     </div>
   );

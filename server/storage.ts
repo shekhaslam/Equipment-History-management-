@@ -33,6 +33,12 @@ sqlite.exec(`
     priority TEXT DEFAULT 'medium',
     status TEXT DEFAULT 'pending',
     ticketNo TEXT UNIQUE,
+    resolveDate TEXT,
+    resolveNature TEXT,
+    resolveAmount TEXT,
+    resolveInvoice TEXT,
+    resolveVendor TEXT,
+    resolveRemarks TEXT,
     createdAt TEXT
   );
 `);
@@ -59,6 +65,16 @@ try {
   sqlite.prepare("SELECT fault FROM repair_requests LIMIT 1").get();
 } catch(e) {
   try { sqlite.exec("ALTER TABLE repair_requests ADD COLUMN fault TEXT;"); } catch(ex) {}
+}
+try {
+  sqlite.prepare("SELECT resolveDate FROM repair_requests LIMIT 1").get();
+} catch(e) {
+  try { sqlite.exec("ALTER TABLE repair_requests ADD COLUMN resolveDate TEXT;"); } catch(ex) {}
+  try { sqlite.exec("ALTER TABLE repair_requests ADD COLUMN resolveNature TEXT;"); } catch(ex) {}
+  try { sqlite.exec("ALTER TABLE repair_requests ADD COLUMN resolveAmount TEXT;"); } catch(ex) {}
+  try { sqlite.exec("ALTER TABLE repair_requests ADD COLUMN resolveInvoice TEXT;"); } catch(ex) {}
+  try { sqlite.exec("ALTER TABLE repair_requests ADD COLUMN resolveVendor TEXT;"); } catch(ex) {}
+  try { sqlite.exec("ALTER TABLE repair_requests ADD COLUMN resolveRemarks TEXT;"); } catch(ex) {}
 }
 
 // Ensure unique indexing for ticketNo to natively block duplicates
@@ -250,17 +266,38 @@ export const storage = new (class SqliteStorage {
     return true;
   }
 
+  async getTicketById(id: number) {
+    return sqlite.prepare("SELECT * FROM repair_requests WHERE id = ?").get(id) as any;
+  }
+
   async resolveTicket(ticketId: number, resolution: { date: string, nature: string, amount: string, invoiceNo?: string, vendorName?: string, remarks?: string }) {
     const ticket = sqlite.prepare('SELECT * FROM repair_requests WHERE id = ?').get(ticketId) as any;
     if (!ticket) return false;
 
-    // Save resolution details into the ticket record itself (for audit)
+    // Save resolution details into the ticket record itself (for audit and structured display)
     const fullResolution = `RESOLVED | ${resolution.nature} | Inv: ${resolution.invoiceNo} | Cost: ${resolution.amount} | Notes: ${resolution.remarks}`;
     
-    // NATIVE RESOLVE: Just mark as archived/resolved in repair_requests
-    // This keeps it in the "Service History" for this specific equipment without needing a separate table
-    sqlite.prepare("UPDATE repair_requests SET status = 'resolved', issueDescription = ? WHERE id = ?")
-      .run(`${ticket.issueDescription} ||| ${fullResolution}`, ticketId);
+    sqlite.prepare(`
+      UPDATE repair_requests SET 
+        status = 'resolved', 
+        issueDescription = ?,
+        resolveDate = ?,
+        resolveNature = ?,
+        resolveAmount = ?,
+        resolveInvoice = ?,
+        resolveVendor = ?,
+        resolveRemarks = ?
+      WHERE id = ?
+    `).run(
+      `${ticket.issueDescription} ||| ${fullResolution}`, 
+      resolution.date || new Date().toISOString().split('T')[0], // Use YYYY-MM-DD for consistency
+      resolution.nature || "Verified Repair",
+      resolution.amount || "0",
+      resolution.invoiceNo || "",
+      resolution.vendorName || "",
+      resolution.remarks || "",
+      ticketId
+    );
 
     return true;
   }
@@ -269,21 +306,44 @@ export const storage = new (class SqliteStorage {
     const ticket = sqlite.prepare('SELECT * FROM repair_requests WHERE id = ?').get(ticketId) as any;
     if (!ticket || ticket.status !== 'resolved') return false;
 
-    // Parse the resolution details back out
-    const parts = ticket.issueDescription.split(' ||| RESOLVED | ');
-    if (parts.length < 2) return false;
-    
-    const resParts = parts[1].split(' | ');
-    const nature = resParts[0];
-    const invoice = resParts[1]?.replace('Inv: ', '');
-    const cost = resParts[2]?.replace('Cost: ', '');
-    const remarks = resParts[3]?.replace('Notes: ', '');
+    // Use structured fields if available, otherwise fallback to parsing (for legacy tickets)
+    let { resolveNature: nature, resolveAmount: cost, resolveInvoice: invoice, resolveVendor: vendor, resolveRemarks: remarks, resolveDate: date } = ticket;
+
+    if (!nature) {
+      // Legacy fallback parsing
+      const parts = ticket.issueDescription.split(' ||| RESOLVED | ');
+      if (parts.length >= 2) {
+        const resParts = parts[1].split(' | ');
+        nature = resParts[0];
+        invoice = resParts[1]?.replace('Inv: ', '');
+        cost = resParts[2]?.replace('Cost: ', '');
+        remarks = resParts[3]?.replace('Notes: ', '');
+        vendor = "DOP Resolved Ticket";
+      }
+    }
+
+    if (!date) {
+      date = new Date().toISOString().split('T')[0]; // Default to current YYYY-MM-DD
+    }
+
+    // ✅ ROBUST NORMALIZATION: Ensure YYYY-MM-DD for the database repairs table
+    if (date && date.includes('-')) {
+      const parts = date.split('-');
+      if (parts[0].length < 4) {
+        // DB has DD-MM-YYYY, convert to YYYY-MM-DD
+        date = parts.reverse().join('-');
+      }
+    } else if (date && date.includes('/')) {
+        date = date.split('/').reverse().join('-');
+    }
+    // If it's already YYYY-MM-DD (structured) it's fine. If it was DD-MM-YYYY we might need conversion.
+    // But since resolveData.date in frontend is YYYY-MM-DD, structured should be correct.
 
     // 1. Move to repairs table (Main Technical History)
     sqlite.prepare(`
       INSERT INTO repairs (equipmentId, date, natureOfRepair, amount, invoiceNo, vendorName, remarks)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(ticket.equipmentId, new Date().toLocaleDateString('en-GB'), nature, cost, invoice, "DOP Resolved Ticket", remarks);
+    `).run(ticket.equipmentId, date, nature || "Verified Repair", cost || "0", invoice || "", vendor || "DOP Resolved Ticket", remarks || "");
 
     // 2. Mark ticket as 'archived' so it doesn't show up in Service Log's "Swipe" list
     sqlite.prepare("UPDATE repair_requests SET status = 'archived' WHERE id = ?").run(ticketId);

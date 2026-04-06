@@ -284,18 +284,28 @@ function App() {
           ticketNo: resData.ticketNo,
           timestamp: new Date().toLocaleString('en-IN', { 
             day: '2-digit', month: '2-digit', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit', second: '2-digit'
+            hour: '2-digit', minute: '2-digit', hour12: true
           }),
           equipmentName: equipment?.name || "DOP Asset",
           serialNumber: equipment?.sn || "S/N Pending",
           model: equipment?.model || "---",
           officeName: equipment?.office || "---",
-          division: equipment?.division || "---",
-          area: equipment?.area || "---",
-          pincode: equipment?.pincode || "---"
+          division: equipment?.division || "---"
         };
         
         setTicketData(enrichedData);
+
+        // ✅ SAVE TO LOCAL STORAGE (Recent Reports)
+        try {
+          const recent = JSON.parse(localStorage.getItem("dop_cloud_recent") || "[]");
+          const updated = [enrichedData, ...recent.filter((t:any) => t.ticketNo !== enrichedData.ticketNo)].slice(0, 5);
+          localStorage.setItem("dop_cloud_recent", JSON.stringify(updated));
+        } catch (e) {}
+
+        // ✅ AUTO DOWNLOAD PDF (SIMULATED PRINT)
+        setTimeout(() => {
+          window.print();
+        }, 1500);
       } else {
           throw new Error("Could not retrieve Ticket ID");
       }
@@ -665,6 +675,38 @@ function App() {
           ) : (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
               
+              {/* ✅ RECENT REPORTS SECTION (MOBILE RETRIEVAL) */}
+              {(() => {
+                const recent = JSON.parse(localStorage.getItem("dop_cloud_recent") || "[]");
+                if (recent.length > 0) {
+                  return (
+                    <div className="mb-10 px-2 animate-in slide-in-from-top-4 duration-500">
+                       <div className="flex items-center gap-2 mb-4 opacity-40">
+                          <Clock size={14} className="text-slate-900" />
+                          <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-900">My Recent Reports</h4>
+                       </div>
+                       <div className="space-y-3">
+                          {recent.map((r:any) => (
+                            <div key={r.ticketNo} className="bg-white border border-slate-100 p-4 rounded-2xl flex justify-between items-center shadow-sm active:scale-[0.98] transition-all" 
+                                 onClick={() => { setTicketData(r); window.scrollTo(0, 0); }}>
+                               <div className="flex-1 min-w-0 pr-4">
+                                  <p className="text-[9px] font-black text-red-600 uppercase italic leading-none">{r.ticketNo}</p>
+                                  <p className="text-xs font-bold text-slate-900 mt-1 truncate">{r.issueType}</p>
+                                  <p className="text-[8px] font-bold text-slate-400 mt-0.5">{r.timestamp}</p>
+                               </div>
+                               <button className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center">
+                                  <Download size={16} />
+                               </button>
+                            </div>
+                          ))}
+                       </div>
+                       <div className="h-px bg-slate-100 my-10"></div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               <div className="mb-12">
                 <div className="flex items-center gap-2 mb-6">
                   <div className="w-1.5 h-6 bg-[#D41217] rounded-full"></div>

@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useEquipment, useDeleteEquipment } from "@/hooks/use-equipment";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { generateProPDF, generateServiceLogPDF } from "@/lib/pdfGenerator";
+import { generateProPDF, generateServiceLogPDF, generateUnifiedLogPDF } from "@/lib/pdfGenerator";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/queryClient";
@@ -39,10 +39,9 @@ export default function EquipmentDetail() {
 
   const mutation = useMutation({
     mutationFn: async (ticketId: number) => {
-      const payloadDate = resolveData.date ? resolveData.date.split('-').reverse().join('-') : new Date().toLocaleDateString('en-GB'); // Convert YYYY-MM-DD to DD-MM-YYYY
       const res = await apiRequest("POST", `/api/admin/tickets/${ticketId}/resolve`, {
         ...resolveData,
-        date: payloadDate
+        date: resolveData.date || new Date().toISOString().split('T')[0] // Send YYYY-MM-DD directly
       });
 
       const ticket = ((equipment as any).tickets || []).find((t:any) => t.id === ticketId);
@@ -93,7 +92,6 @@ export default function EquipmentDetail() {
           backUrl="/inventory"
           actions={
             <div className="flex gap-2">
-              {/* ✅ STEP 2 FIXED: Ab ye seedha generateProPDF ko call karega jisme Logo aur saari details hain */}
               
 <Button 
   variant="outline" 
@@ -134,7 +132,6 @@ export default function EquipmentDetail() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="md:col-span-3 space-y-6">
-            {/* 1. Main Repair history Table */}
             <Card className="shadow-md border-border/50 overflow-hidden">
               <CardHeader className="bg-slate-50/50 border-b">
                 <CardTitle className="flex items-center gap-2 text-slate-800">
@@ -143,7 +140,15 @@ export default function EquipmentDetail() {
               </CardHeader>
               <CardContent className="p-0">
                 <RepairTable 
-                   repairs={(equipment.repairs || []).sort((a:any, b:any) => {
+                   repairs={(equipment.repairs || []).map((r:any) => {
+                     let date = r.date;
+                     if (date && date.includes('-') && date.split('-')[0].length < 4) {
+                       date = date.split('-').reverse().join('-');
+                     } else if (date && date.includes('/')) {
+                       date = date.split('/').reverse().join('-');
+                     }
+                     return { ...r, date };
+                   }).sort((a:any, b:any) => {
                      const dateA = new Date(a.date).getTime();
                      const dateB = new Date(b.date).getTime();
                      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
@@ -154,32 +159,65 @@ export default function EquipmentDetail() {
               </CardContent>
             </Card>
 
-            {/* 2. PENDING TICKETS SECTION */}
-            {(((equipment as any).tickets || []).filter((t:any) => t.status === 'pending').length > 0) && (
+            {(((equipment as any).tickets || []).filter((t:any) => t.status === 'pending' || t.status === 'processing').length > 0) && (
               <div className="space-y-4 pt-4">
-                <h3 className="text-lg font-black text-slate-900 uppercase flex items-center gap-2 px-2">
-                  <Clock className="w-5 h-5 text-red-500" /> Pending Maintenance Requests
-                </h3>
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-xl font-black text-slate-900 uppercase flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-red-500 animate-pulse" />
+                    </div>
+                    Official Maintenance Registry
+                  </h3>
+                  <span className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1 rounded-full uppercase tracking-widest border border-red-100">
+                    {((equipment as any).tickets || []).filter((t:any) => t.status === 'pending' || t.status === 'processing').length} Active Requests
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-1 gap-4">
-                  {((equipment as any).tickets || []).filter((t:any) => t.status === 'pending').map((ticket:any) => (
-                    <Card key={ticket.id} className="border-2 border-red-100 bg-red-50/10 shadow-sm overflow-hidden group">
-                      <CardContent className="p-5 flex justify-between items-center">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-black bg-red-100 text-red-600 px-2 py-0.5 rounded-md">{ticket.ticketNo}</span>
-                            <span className="text-[10px] font-bold text-slate-400">{ticket.createdAt}</span>
+                  {((equipment as any).tickets || []).filter((t:any) => t.status === 'pending' || t.status === 'processing').map((ticket:any) => (
+                    <Card key={ticket.id} className="border-2 border-slate-100 bg-white shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group rounded-[2rem]">
+                      <div className="bg-slate-900 px-8 py-4 flex justify-between items-center text-white">
+                        <div className="flex items-center gap-4">
+                           <div className="flex flex-col">
+                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Registration ID</span>
+                             <span className="text-sm font-black tracking-tighter text-emerald-400">{ticket.ticketNo}</span>
+                           </div>
+                           <div className="h-6 w-[1.5px] bg-white/10 mx-2"></div>
+                           <div className="flex flex-col">
+                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Fault Category</span>
+                             <span className="text-xs font-bold uppercase text-white/90">{ticket.fault || "General Service"}</span>
+                           </div>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{ticket.createdAt}</span>
+                      </div>
+                      <CardContent className="p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+                        <div className="flex-1 space-y-4">
+                          <div>
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1 block">Detailed Fault Description</span>
+                            <p className="font-bold text-slate-900 text-lg italic leading-tight">"{ticket.issueDescription}"</p>
                           </div>
-                          <p className="font-bold text-slate-900 text-sm italic">"{ticket.issueDescription}"</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Reported by: {ticket.reporterName}</p>
+                          <div className="flex items-center gap-6">
+                             <div className="flex flex-col">
+                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Reporting Officer</span>
+                               <span className="text-xs font-bold text-slate-600 uppercase flex items-center gap-1.5 pt-1">
+                                 <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px]">{ticket.reporterName?.charAt(0)}</div>
+                                 {ticket.reporterName}
+                               </span>
+                             </div>
+                             <div className="flex flex-col">
+                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Priority Status</span>
+                               <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-md mt-1 italic uppercase">{ticket.priority || 'Medium'}</span>
+                             </div>
+                          </div>
                         </div>
                         <Button
                           onClick={() => {
                             setSelectedTicket(ticket);
                             setShowResolveDialog(true);
                           }}
-                          className="bg-orange-500 hover:bg-orange-600 text-white font-black text-[10px] uppercase h-8 px-4 rounded-lg shadow-md"
+                          className="w-full md:w-auto bg-[#D41217] hover:bg-black text-white font-black text-[11px] uppercase tracking-widest h-14 px-8 rounded-2xl shadow-xl shadow-red-100 transition-all active:scale-95 flex items-center gap-2 group/btn"
                         >
-                          Resolve Ticket
+                          Resolve Official Ticket
                         </Button>
                       </CardContent>
                     </Card>
@@ -188,41 +226,72 @@ export default function EquipmentDetail() {
               </div>
             )}
             
-            {/* 3. RESOLVED TICKETS SECTION */}
             {(((equipment as any).tickets || []).filter((t:any) => t.status === 'resolved').length > 0) && (
-              <div className="space-y-4 pt-4">
-                <h3 className="text-lg font-black text-slate-900 uppercase flex items-center gap-2 px-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" /> Resolved Tickets Log
-                </h3>
+              <div className="space-y-4 pt-8">
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-xl font-black text-slate-900 uppercase flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    </div>
+                    Resolved Tickets Log
+                  </h3>
+                  <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                    {((equipment as any).tickets || []).filter((t:any) => t.status === 'resolved').length} Completed
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-1 gap-4">
                   {((equipment as any).tickets || []).filter((t:any) => t.status === 'resolved').map((ticket:any) => (
-                    <Card key={ticket.id} className="border-2 border-emerald-100 bg-emerald-50/10 shadow-sm overflow-hidden group">
-                      <CardContent className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-black bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-md">{ticket.ticketNo}</span>
-                            <span className="text-[10px] font-bold text-slate-400">{ticket.createdAt}</span>
-                          </div>
-                          <p className="font-bold text-slate-900 text-sm italic">"{ticket.issueDescription}"</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Reported by: {ticket.reporterName}</p>
+                    <Card key={ticket.id} className="border border-emerald-100 bg-white shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group rounded-[1.5rem]">
+                      <div className="bg-emerald-50/50 px-6 py-3 border-b border-emerald-50 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                           <span className="text-[10px] font-black bg-emerald-500 text-white px-2.5 py-1 rounded-lg tracking-wider italic">{ticket.ticketNo}</span>
+                           <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                             <Calendar className="w-3 h-3" /> {ticket.createdAt}
+                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                           <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Officially Resolved</span>
+                        </div>
+                      </div>
+                      <CardContent className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                        <div className="flex-1 space-y-2">
+                          <p className="font-bold text-slate-900 text-base leading-tight italic">"{ticket.issueDescription.split(' ||| ')[0]}"</p>
+                          <div className="flex flex-wrap gap-4 pt-1">
+                             <div className="flex flex-col">
+                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Reporter</span>
+                               <span className="text-xs font-bold text-slate-600 uppercase">{ticket.reporterName}</span>
+                             </div>
+                             {ticket.resolveNature && (
+                               <div className="flex flex-col">
+                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Work Done</span>
+                                 <span className="text-xs font-bold text-slate-800">{ticket.resolveNature}</span>
+                               </div>
+                             )}
+                             {ticket.resolveAmount && (
+                               <div className="flex flex-col">
+                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Final Cost</span>
+                                 <span className="text-xs font-black text-emerald-600">₹{ticket.resolveAmount}</span>
+                               </div>
+                             )}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-3 w-full md:w-auto">
                            <Button
                              variant="outline"
-                             className="text-slate-700 font-bold text-[10px] uppercase h-8 px-4 rounded-lg shadow-sm border-slate-200 hover:bg-slate-50"
-                             onClick={() => {
-                               const repairDetails = equipment.repairs?.find((r:any) => r.remarks?.includes(ticket.ticketNo));
-                               generateServiceLogPDF(equipment, ticket, repairDetails);
+                             className="flex-1 md:flex-initial border-2 border-slate-100 text-slate-700 font-black text-[10px] uppercase tracking-widest h-11 px-6 rounded-xl hover:bg-slate-50 transition-all flex items-center gap-2 group/btn"
+                            onClick={() => {
+                               generateUnifiedLogPDF(equipment, ticket);
                              }}
                            >
-                             <Printer className="w-4 h-4 mr-1"/> Log PDF
+                             <Printer className="w-4 h-4 text-primary group-hover/btn:scale-110 transition-transform"/> Log PDF
                            </Button>
                            <Button
                              onClick={() => swipeMutation.mutate(ticket.id)}
                              disabled={swipeMutation.isPending}
-                             className="bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[10px] uppercase h-8 px-4 rounded-lg shadow-md flex items-center gap-1"
+                             className="flex-1 md:flex-initial bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest h-11 px-6 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 group/btn animate-in fade-in slide-in-from-right-4 duration-500"
                            >
-                              {swipeMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                              {swipeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />}
                              Merge Final
                            </Button>
                         </div>
@@ -233,7 +302,6 @@ export default function EquipmentDetail() {
               </div>
             )}
             
-            {/* RESOLUTION DIALOG */}
             {showResolveDialog && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
                  <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
