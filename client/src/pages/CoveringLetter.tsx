@@ -55,7 +55,7 @@ export default function CoveringLetter() {
   }, []);
 
   const formData = form.watch();
-  const debouncedFormData = useDebounce(formData, 800);
+  const debouncedFormData = useDebounce(formData, 1500);
 
   // Auto-save sticky fields
   useEffect(() => {
@@ -64,13 +64,24 @@ export default function CoveringLetter() {
     localStorage.setItem("letter_sender_designation", formData.designation || "");
   }, [formData.header, formData.sender, formData.designation]);
 
-  // Update Live Preview
+  // Update Live Preview (with Cleanup to fix blinking)
   useEffect(() => {
+    let currentUrl: string | null = null;
+    
     const updatePreview = async () => {
       const url = await generateCoveringLetterPDF(debouncedFormData, true);
-      if (url) setPreviewUrl(url as string);
+      if (url) {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(url as string);
+        currentUrl = url as string;
+      }
     };
+    
     updatePreview();
+
+    return () => {
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+    };
   }, [debouncedFormData]);
 
   const saveMutation = useMutation({
