@@ -9,8 +9,9 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import EquipmentForm from "@/pages/EquipmentForm";
 import EquipmentDetail from "@/pages/EquipmentDetail";
-import QRManagement from "@/pages/QRManagement"; // ✅ Naya Page
-import Sidebar from "@/components/layout/Sidebar"; // ✅ Naya Sidebar
+import QRManagement from "@/pages/QRManagement"; 
+import CoveringLetter from "@/pages/CoveringLetter";
+import Sidebar from "@/components/layout/Sidebar"; 
 import { LogOut, ShieldCheck, MapPin, Building2, UserCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -307,6 +308,7 @@ function Router() {
                       <Dashboard userEmail={userEmail} setUserEmail={setUserEmail} />
                     </Route>
                     <Route path="/qr-management" component={QRManagement} />
+                    <Route path="/covering-letter" component={CoveringLetter} />
                     <Route path="/inventory" component={InventoryList} />
                     <Route path="/create" component={EquipmentForm} />
                     <Route path="/equipment/:id" component={EquipmentDetail} />

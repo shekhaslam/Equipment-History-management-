@@ -11,21 +11,21 @@ const SPREADSHEET_NAME = "EQUIPMENT-DOP_ASSETS REPORT";
 function setup() {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // 1. Equipment List Tab
-  let eqSheet = ss.getSheetByName("EQUIPMENT_LIST");
-  if (!eqSheet) {
-    eqSheet = ss.insertSheet("EQUIPMENT_LIST");
-    eqSheet.appendRow(["ID", "Name", "S/N", "Office", "Model", "Division", "Area", "Pincode", "InstalledAt", "InstallDate", "Verified Office ID", "Last Sync"]);
-    eqSheet.getRange("A1:L1").setFontWeight("bold").setBackground("#f3f3f3");
-  }
-  
-  // 2. Reports Tab
+  // REPORTS Tab (Updates Headers with Invoice & Amount)
   let repSheet = ss.getSheetByName("REPORTS");
   if (!repSheet) {
     repSheet = ss.insertSheet("REPORTS");
-    repSheet.appendRow(["ID", "TicketNo", "EquipmentID", "Reporter", "Branch", "Mobile", "Fault", "Details", "Timestamp", "SyncStatus", "ResDate", "ResNature", "ResVendor", "ResRemarks", "InvoiceNo", "Amount"]);
-    repSheet.getRange("A1:P1").setFontWeight("bold").setBackground("#D41217").setFontColor("white");
   }
+  
+  // Set headers for all 16 columns (A to P)
+  const headers = [["ID", "TicketNo", "EquipmentID", "Reporter", "Branch", "Mobile", "Fault", "Details", "Timestamp", "SyncStatus", "ResDate", "ResNature", "ResVendor", "ResRemarks", "InvoiceNo", "Amount"]];
+  repSheet.getRange(1, 1, 1, 16).setValues(headers);
+  
+  // Format the red header row
+  repSheet.getRange("A1:P1").setFontWeight("bold").setBackground("#D41217").setFontColor("white");
+  
+  // Freeze the header row
+  repSheet.setFrozenRows(1);
 }
 
 /**

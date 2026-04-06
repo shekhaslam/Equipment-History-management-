@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -374,6 +375,80 @@ export async function registerRoutes(
       res.json({ ip });
     } catch (err) {
       res.status(500).json({ ip: "localhost" });
+    }
+  });
+
+  // ✅ 14. AI Drafting Logic (Gemini)
+  app.post("/api/ai/draft-letter", async (req, res) => {
+    try {
+      const { roughIdea, language, recipient, sender } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      if (!apiKey) {
+        return res.status(400).json({ message: "Gemini API Key missing in server environment (.env)" });
+      }
+
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const prompt = `
+        You are an expert administrative assistant for the Department of Posts, India (India Post).
+        Draft a highly professional official covering letter based on these details:
+        - Sender: ${sender || 'The Postmaster'}
+        - Recipient: ${recipient || 'The Authority'}
+        - User's Rough Notes/Idea: "${roughIdea}"
+        - Output Language: ${language || 'English'} (Ensure deep professional vocabulary)
+
+        Please provide:
+        1. A formal Subject line.
+        2. A structured professional Body (opening, details, closing).
+        
+        Respond ONLY in a JSON format like this:
+        {
+          "subject": "The formal subject line",
+          "body": "The complete formal body of the letter with placeholders if needed"
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      
+      // Clean potential markdown code blocks
+      const cleanJson = text.replace(/```json|```/g, "").trim();
+      res.json(JSON.parse(cleanJson));
+    } catch (err: any) {
+      console.error("AI Drafting Error:", err);
+      res.status(500).json({ message: "AI Draft fail ho gaya. Kripya rough idea sahi se likhein." });
+    }
+  });
+
+  // ✅ 15. Covering Letters CRUD
+  app.get("/api/letters", async (_req, res) => {
+    try {
+      const letters = await storage.getCoveringLetters();
+      res.json(letters);
+    } catch (err) {
+      res.status(500).json({ message: "Letters load nahi ho paye" });
+    }
+  });
+
+  app.post("/api/letters", async (req, res) => {
+    try {
+      const result = await storage.saveCoveringLetter(req.body);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ message: "Letter save nahi ho paya" });
+    }
+  });
+
+  app.delete("/api/letters/:id", async (req, res) => {
+    try {
+      await storage.deleteLetter(Number(req.params.id));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Letter delete nahi ho paya" });
     }
   });
 

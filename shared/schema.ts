@@ -56,6 +56,21 @@ export const repairs = pgTable("repairs", {
   remarks: text("remarks"), // Added for legal/audit
 });
 
+// 4. Covering Letters Table (AI Features)
+export const coveringLetters = pgTable("covering_letters", {
+  id: serial("id").primaryKey(),
+  letterNo: text("letter_no").notNull(),
+  date: text("date").notNull(),
+  recipient: text("recipient").notNull(), 
+  sender: text("sender").notNull(),       
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  roughIdea: text("rough_idea"),
+  language: text("language").default("English").notNull(),
+  attachments: text("attachments"), // JSON string or comma separated file notes
+  createdAt: text("created_at"),
+});
+
 // Relations Logic
 export const equipmentRelations = relations(equipment, ({ many }) => ({
   repairs: many(repairs),
@@ -81,6 +96,12 @@ export const insertRepairsTableSchema = createInsertSchema(repairs).omit({
   id: true
 });
 
+// Covering Letter Schema
+export const insertCoveringLetterSchema = createInsertSchema(coveringLetters).omit({
+  id: true,
+  createdAt: true
+});
+
 // --- TYPES ---
 export type Equipment = typeof equipment.$inferSelect;
 export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
@@ -91,3 +112,6 @@ export type InsertRepair = z.infer<typeof insertRepairSchema>;
 
 export type Repair = typeof repairs.$inferSelect;
 export type InsertRepairsTable = z.infer<typeof insertRepairsTableSchema>;
+
+export type CoveringLetter = typeof coveringLetters.$inferSelect;
+export type InsertCoveringLetter = z.infer<typeof insertCoveringLetterSchema>;

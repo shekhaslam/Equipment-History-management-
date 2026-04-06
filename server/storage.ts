@@ -41,6 +41,19 @@ sqlite.exec(`
     resolveRemarks TEXT,
     createdAt TEXT
   );
+  CREATE TABLE IF NOT EXISTS covering_letters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    letterNo TEXT NOT NULL,
+    date TEXT NOT NULL,
+    recipient TEXT NOT NULL,
+    sender TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body TEXT NOT NULL,
+    roughIdea TEXT,
+    language TEXT DEFAULT 'English',
+    attachments TEXT,
+    createdAt TEXT
+  );
 `);
 
 // ✅ MIGRATION: Ensure schema updates apply to existing databases
@@ -370,6 +383,47 @@ export const storage = new (class SqliteStorage {
     }
     const rStmt = sqlite.prepare('INSERT INTO repairs (equipmentId, date, natureOfRepair, amount, invoiceNo, vendorName, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)');
     rep.forEach(r => rStmt.run(eid, r.date, r.natureOfRepair, String(r.amount), r.invoiceNo || "", r.vendorName || "", r.remarks || ""));
+    return true;
+  }
+
+  // --- COVERING LETTERS (AI Feature) ---
+  async getCoveringLetters() {
+    return sqlite.prepare("SELECT * FROM covering_letters ORDER BY id DESC").all();
+  }
+
+  async getCoveringLetterById(id: number) {
+    return sqlite.prepare("SELECT * FROM covering_letters WHERE id = ?").get(id);
+  }
+
+  async saveCoveringLetter(letter: any) {
+    // Smart Logic: Update if LetterNo, Date AND Subject are same, else Create New
+    const existing = sqlite.prepare("SELECT id FROM covering_letters WHERE letterNo = ? AND date = ? AND subject = ?").get(letter.letterNo, letter.date, letter.subject) as any;
+
+    if (existing) {
+      // UPDATE (Overwrite)
+      sqlite.prepare(`
+        UPDATE covering_letters SET 
+          recipient = ?, sender = ?, body = ?, roughIdea = ?, language = ?, attachments = ?
+        WHERE id = ?
+      `).run(letter.recipient, letter.sender, letter.body, letter.roughIdea, letter.language, letter.attachments, existing.id);
+      return { id: existing.id, action: "updated" };
+    } else {
+      // NEW ENTRY
+      const res = sqlite.prepare(`
+        INSERT INTO covering_letters (
+          letterNo, date, recipient, sender, subject, body, roughIdea, language, attachments, createdAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        letter.letterNo, letter.date, letter.recipient, letter.sender, letter.subject, 
+        letter.body, letter.roughIdea, letter.language, letter.attachments, 
+        new Date().toLocaleString('en-IN')
+      );
+      return { id: res.lastInsertRowid, action: "created" };
+    }
+  }
+
+  async deleteLetter(id: number) {
+    sqlite.prepare("DELETE FROM covering_letters WHERE id = ?").run(id);
     return true;
   }
 })();

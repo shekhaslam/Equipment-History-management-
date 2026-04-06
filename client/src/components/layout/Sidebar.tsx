@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { QrCode, LayoutDashboard, Package } from "lucide-react";
+import { QrCode, LayoutDashboard, Package, PenTool } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Sidebar() {
@@ -8,6 +8,7 @@ export default function Sidebar() {
   const menuItems = [
     { label: "Dashboard", href: "/", icon: LayoutDashboard },
     { label: "Inventory Records", href: "/inventory", icon: Package },
+    { label: "AI Letter Draft", href: "/covering-letter", icon: PenTool },
     { label: "QR Management", href: "/qr-management", icon: QrCode }
   ];
 
