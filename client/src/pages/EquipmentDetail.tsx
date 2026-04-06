@@ -48,7 +48,7 @@ export default function EquipmentDetail() {
       if (ticket && ticket.ticketNo.startsWith('ER-')) {
           try {
             const electron = (window as any).require('electron');
-            await electron.ipcRenderer.invoke('update-cloud-ticket-status', {
+            const cloudResult = await electron.ipcRenderer.invoke('update-cloud-ticket-status', {
                 ticketNo: ticket.ticketNo,
                 status: 'RESOLVED',
                 nature: resolveData.nature,
@@ -56,7 +56,15 @@ export default function EquipmentDetail() {
                 remarks: resolveData.remarks,
                 date: resolveData.date
             });
-          } catch(e) {}
+            if (!cloudResult || !cloudResult.success) {
+                console.warn("⚠️ Google Sheet Update Failed:", cloudResult?.error);
+                alert("⚠️ Local database updated, but Google Sheet sync failed. Please check your cloud connection.");
+            } else {
+                console.log("✅ Google Sheet Updated Successfully!");
+            }
+          } catch(e) {
+            console.error("❌ Electron Sync Call Failed:", e);
+          }
       }
       return res;
     },

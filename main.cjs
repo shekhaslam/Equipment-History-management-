@@ -367,18 +367,23 @@ function createWindow() {
     }
   });
 
-  ipcMain.handle('update-cloud-ticket-status', async (event, data) => { // Data contains ticketNo, status, nature, amount, vendorName, remarks, date
-    if (!CLOUD_BRIDGE_URL || CLOUD_BRIDGE_URL.includes("PASTE_YOUR")) return { success: false };
+  ipcMain.handle('update-cloud-ticket-status', async (event, data) => { 
+    if (!CLOUD_BRIDGE_URL || CLOUD_BRIDGE_URL.includes("PASTE_YOUR")) {
+        console.warn("⚠️ Cloud Status Update Aborted: CLOUD_BRIDGE_URL not configured.");
+        return { success: false };
+    }
     try {
+        console.log("📤 Sending Status Update to Cloud:", JSON.stringify(data));
         const res = await fetch(CLOUD_BRIDGE_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "update_ticket_status", ...data })
         });
-        const data = await res.json();
-        return data;
+        const resultData = await res.json();
+        console.log("📥 Cloud Update Response:", JSON.stringify(resultData));
+        return resultData;
     } catch (e) {
-        console.error("Cloud Status Update failed:", e.message);
+        console.error("❌ Cloud Status Update failed:", e.message);
         return { success: false, error: e.message };
     }
   });

@@ -9,7 +9,7 @@ import html2pdf from 'html2pdf.js';
 import './App.css';
 
 // --- CONFIGURATION ---
-const GAS_URL = "https://script.google.com/macros/s/AKfycbztBBsjjK3SaeME8ZUBdW-MXNoDK79fxHLr3v21Xn5hIc4YDeKPazevb-iMqsuWmpYA/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzkv3sVk-vSo0iIevXbVOoYo2x05S9LGVOpuBcEwmAH2TOIhBMogWY8QJjM72E3CT8l/exec"; 
 
 function App() {
   const queryParams = new URLSearchParams(window.location.search);
