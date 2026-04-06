@@ -70,7 +70,7 @@ export default function CoveringLetter() {
       const url = await generateCoveringLetterPDF(form.getValues(), true);
       if (url) {
         if (previewUrl) URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(url as string);
+        setPreviewUrl(url as unknown as string);
       }
     } catch (e) {
       toast({ title: "Preview Error", description: "PDF generate nahi ho saka.", variant: "destructive" });
